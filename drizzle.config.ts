@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
 export default defineConfig({
-  dialect: 'sqlite', schema: './server/schema.ts', out: './drizzle',
+  dialect: 'sqlite', schema: './server/infrastructure/database/schema.ts', out: './drizzle',
   dbCredentials: { url: process.env.DATABASE_PATH ?? './data/daily-signal.sqlite' },
 });
