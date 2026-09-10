@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
-import { addFeedSchema, appStateSchema, connectionSchema, digestInputSchema, digestSchema, feedSchema, idSchema, importOpmlSchema, importResultSchema, okSchema, refreshResultSchema, settingsSchema } from './types';
+import { addFeedSchema, appStateSchema, connectionSchema, digestInputSchema, digestSchema, feedSchema, idSchema, importOpmlSchema, importResultSchema, okSchema, refreshResultSchema, settingsSchema, settingsUpdateSchema } from './types';
 
 const procedure = oc.errors({
   BAD_REQUEST: {}, NOT_FOUND: {}, CONFLICT: {}, PAYLOAD_TOO_LARGE: {},
@@ -15,7 +15,7 @@ export const contract = {
     import: procedure.input(importOpmlSchema).output(importResultSchema),
     export: procedure.output(z.object({ opml: z.string() })),
   },
-  settings: { save: procedure.input(settingsSchema).output(settingsSchema) },
+  settings: { save: procedure.input(settingsUpdateSchema).output(settingsSchema) },
   ai: { test: procedure.input(connectionSchema).output(okSchema) },
   digests: {
     generate: procedure.input(digestInputSchema).output(digestSchema),

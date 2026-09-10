@@ -30,11 +30,52 @@ test('typed oRPC client persists settings and returns the Zod-defined state', as
   assert.equal(reloaded.defaultTemplate, initial.defaultTemplate);
 });
 
-test('runtime contract rejects untyped secret fields, malformed input and unknown procedures', async () => {
+test('provider key persists privately, survives template edits, can be replaced and cleared', async () => {
+  const { db } = await import('./db');
+  const { settings } = await import('./schema');
+  const initial = await rpc.state();
+  const secret = 'SAVED-PROVIDER-KEY';
+  const saved = await rpc.settings.save({ ...initial.settings, apiKey: secret });
+  assert.equal(db.select().from(settings).get()?.apiKey, secret);
+  assert.equal((await rpc.state()).hasApiKey, true);
+  assert.equal(JSON.stringify(saved).includes(secret), false);
+  assert.equal(JSON.stringify(await rpc.state()).includes(secret), false);
+  const updated = await rpc.settings.save({ ...saved, template: 'Updated template' });
+  assert.equal(db.select().from(settings).get()?.apiKey, secret);
+  await rpc.settings.save({ ...updated, apiKey: 'REPLACEMENT-KEY' });
+  assert.equal(db.select().from(settings).get()?.apiKey, 'REPLACEMENT-KEY');
+  await rpc.settings.save({ ...updated, apiKey: null });
+  assert.equal((await rpc.state()).hasApiKey, false);
+  assert.equal(db.select().from(settings).get()?.apiKey, null);
+});
+
+test('changing endpoints never reuses the previous provider credential', async () => {
+  const { getApiKey } = await import('./db');
+  const { settings: initial } = await rpc.state();
+  await rpc.settings.save({ ...initial, apiKey: 'OLD-PROVIDER-KEY' });
+  const changed = await rpc.settings.save({ ...initial, baseUrl: 'https://api.deepseek.com' });
+  assert.equal(getApiKey(), null);
+  await rpc.settings.save({ ...changed, baseUrl: initial.baseUrl, apiKey: 'NEW-PROVIDER-KEY' });
+  assert.equal(getApiKey(), 'NEW-PROVIDER-KEY');
+  await rpc.settings.save({ ...initial, apiKey: null });
+});
+
+test('invalid keys do not overwrite a previously saved credential', async () => {
+  const { getApiKey } = await import('./db');
+  const { settings } = await rpc.state();
+  await rpc.settings.save({ ...settings, apiKey: 'VALID-KEY' });
+  for (const apiKey of ['', '   ', 'INVALID\nKEY', 'x'.repeat(4097)]) {
+    await assert.rejects(rpc.settings.save({ ...settings, apiKey }));
+    assert.equal(getApiKey(), 'VALID-KEY');
+  }
+  await rpc.settings.save({ ...settings, apiKey: null });
+});
+
+test('runtime contract rejects unknown fields, malformed input and unknown procedures', async () => {
   const state = await rpc.state();
   const secret = 'NO-SECRET-IN-ERROR-OR-STORAGE';
   const invalid = await fetch(`${baseUrl}/rpc/settings/save`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ json: { ...state.settings, apiKey: secret } }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ json: { ...state.settings, unknownCredential: secret } }),
   });
   assert.equal(invalid.status, 400);
   assert.equal((await invalid.text()).includes(secret), false);

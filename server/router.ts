@@ -1,7 +1,7 @@
 import { implement, ORPCError } from '@orpc/server';
 import { eq } from 'drizzle-orm';
 import { contract } from '../shared/contract';
-import { db, getState } from './db';
+import { db, getSettings, getState } from './db';
 import { digests, feeds, settings } from './schema';
 import { addFeed, exportOpml, importOpml, refreshFeeds } from './feeds';
 import { generateDigest, testConnection } from './ai';
@@ -55,8 +55,12 @@ export const router = implementer.router({
   settings: {
     save: rpc.settings.save.handler(({ input }) => {
       normalizePublicUrl(input.baseUrl);
-      db.update(settings).set({ value: input }).where(eq(settings.id, 1)).run();
-      return input;
+      const { apiKey, ...value } = input;
+      // A credential belongs to its saved endpoint. Changing it requires a new key.
+      const credential = apiKey !== undefined ? { apiKey }
+        : value.baseUrl !== getSettings().baseUrl ? { apiKey: null } : {};
+      db.update(settings).set({ value, ...credential }).where(eq(settings.id, 1)).run();
+      return value;
     }),
   },
   ai: {

@@ -48,6 +48,9 @@ export function getSettings(): Settings {
   if (!row) throw new Error('模型配置不存在');
   return row.value;
 }
+export function getApiKey(): string | null {
+  return db.select({ apiKey: settings.apiKey }).from(settings).where(eq(settings.id, 1)).get()?.apiKey ?? null;
+}
 export function listFeeds(): Feed[] {
   return db.select({ ...getTableColumns(feeds), articleCount: count(articles.id) })
     .from(feeds).leftJoin(articles, eq(articles.feedId, feeds.id))
@@ -64,6 +67,6 @@ export function getState(): AppState {
   return {
     feeds: listFeeds(), articles: listArticles(),
     digests: db.select().from(digests).orderBy(desc(digests.createdAt)).all(),
-    settings: getSettings(), defaultTemplate,
+    settings: getSettings(), hasApiKey: Boolean(getApiKey()), defaultTemplate,
   };
 }

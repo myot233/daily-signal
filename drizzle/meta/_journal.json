@@ -15,6 +15,13 @@
       "when": 1788982375836,
       "tag": "0001_deepseek-thinking-mode",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789013315705,
+      "tag": "0002_persist-provider-key",
+      "breakpoints": true
     }
   ]
 }

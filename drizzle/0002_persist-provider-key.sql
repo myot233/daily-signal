@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `api_key` text;
