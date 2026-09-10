@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, BookOpen, Check, FileText, RefreshCw, Rss, Settings2, Sparkles } from 'lucide-react'
-import { digestInputSchema } from '../../shared/types'
-import { dayBounds, formatDate, localDate, rpc } from '../lib/client'
+import { dayBounds, formatDate, localDate } from '../lib/client'
 import type { View, ViewProps } from '../lib/client'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
@@ -10,7 +9,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Report } from './Report'
 
-export function TodayView({ state, busy, perform, apiKey, navigate, refresh }: ViewProps & { apiKey: string; navigate: (view: View) => void; refresh: () => void }) {
+export function TodayView({ state, busy, apiKey, navigate, refresh, generate }: ViewProps & { apiKey: string; navigate: (view: View) => void; refresh: () => void; generate: (date: string) => void }) {
   const [date, setDate] = useState(localDate)
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
@@ -26,20 +25,13 @@ export function TodayView({ state, busy, perform, apiKey, navigate, refresh }: V
   const definitelyEmpty = state.articles.length < 500 && visibleArticles.length === 0
   const provider = new URL(state.settings.baseUrl).hostname
 
-  function generate() {
-    void perform('生成日报', async () => {
-      const input = digestInputSchema.parse({ date, ...dayBounds(date), apiKey })
-      await rpc.digests.generate(input)
-    }, '日报已生成并归档。重要信息请通过原文核实。')
-  }
-
   return <>
     <div className="view-heading today-heading"><div><div className="eyebrow">每日一读 · 保持好奇</div><h1>看见变化，读懂意义。</h1><p>从你信任的来源出发，整理一份值得认真阅读的技术日报。</p></div><div className="edition-mark" aria-hidden="true"><span>你的</span><strong>每日信号</strong><span>技术 · 观察 · 思考</span></div></div>
     <div className="overview-strip"><div><Rss /><span>订阅来源<strong>{state.feeds.length}<small> 个</small></strong></span></div><div><BookOpen /><span>当日可见文章<strong>{visibleArticles.length}<small> 篇{state.articles.length === 500 ? '（窗口内）' : ''}</small></strong></span></div><div><FileText /><span>已归档日报<strong>{state.digests.length}<small> 份</small></strong></span></div></div>
     <Card className="generation-panel">
-      <div className="generation-controls"><div className="field date-field"><Label htmlFor="digest-date">阅读哪一天</Label><Input id="digest-date" type="date" required value={date} onChange={event => setDate(event.target.value)} disabled={!!busy} /><span className="field-hint">本地时区：{timezone}</span></div><div className="generation-actions"><Button variant="outline" disabled={!!busy || !state.feeds.length} onClick={refresh}><RefreshCw className={busy === '刷新订阅' ? 'spin' : ''} />刷新订阅</Button><Button disabled={!!busy || !date || !apiKey.trim() || !state.feeds.length || definitelyEmpty} onClick={generate}><Sparkles />{report ? '重新生成一版' : '生成日报'}</Button></div></div>
+      <div className="generation-controls"><div className="field date-field"><Label htmlFor="digest-date">阅读哪一天</Label><Input id="digest-date" type="date" required value={date} onChange={event => setDate(event.target.value)} disabled={!!busy} /><span className="field-hint">本地时区：{timezone}</span></div><div className="generation-actions"><Button variant="outline" disabled={!!busy || !state.feeds.length} onClick={refresh}><RefreshCw className={busy === '刷新订阅' ? 'spin' : ''} />刷新订阅</Button><Button disabled={!!busy || !date || !apiKey.trim() || !state.feeds.length || definitelyEmpty} onClick={() => generate(date)}><Sparkles />{report ? '重新生成一版' : '生成日报'}</Button></div></div>
       <div className="generation-caption"><span><Badge variant="secondary">{state.settings.model}</Badge>{provider === 'api.deepseek.com' && <Badge variant="outline">DeepSeek 思考：{state.settings.deepseekThinking === 'enabled' ? '已开启' : '已关闭'}</Badge>} 使用已保存的模型与模板</span><button className="text-link" onClick={() => navigate('settings')}>调整设置 <ArrowRight size={13} /></button></div>
-      <p className="quiet-note">仅总结已缓存文章，不会自动刷新。文章内容与临时 Key 将发送至 <strong>{provider}</strong>。单日去重后最多 500 篇、输入最多 30 万字符；超过限制会在付费调用前拒绝，较多文章可能分批、多次计费。生成失败保留旧版。</p>
+      <p className="quiet-note">从已缓存文章出发，不会自动刷新订阅。AI 可按需访问其中的文章链接，补充网页文本；每份日报最多读取 10 个链接，每页最多保留 12,000 字符，读取失败时使用订阅摘要。资料将发送至 <strong>{provider}</strong>，临时 Key 用于模型认证。订阅资料去重后最多 500 篇、30 万字符；分批整理和网页阅读可能产生多次模型调用。生成失败保留旧版。</p>
       {!apiKey.trim() && <p className="action-hint"><Settings2 size={15} />生成前，请先在 <button className="text-link" onClick={() => navigate('settings')}>AI 设置</button> 中填写临时 API Key。</p>}
       {definitelyEmpty && state.feeds.length > 0 && <p className="action-hint">所选日期没有可总结的文章。请刷新订阅或选择其他日期；订阅只提供其当前公开的文章。</p>}
     </Card>

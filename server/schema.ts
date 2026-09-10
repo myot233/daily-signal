@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type { Article, Settings } from '../shared/types';
+import type { GenerationProgress } from '../shared/progress';
 
 export const feeds = sqliteTable('feeds', {
   id: text('id').primaryKey(), url: text('url').notNull().unique(),
@@ -22,4 +23,5 @@ export const digests = sqliteTable('digests', {
   markdown: text('markdown').notNull(), createdAt: text('created_at').notNull(),
   articleCount: integer('article_count').notNull(), model: text('model').notNull(),
   sources: text('sources', { mode: 'json' }).$type<Article[]>().notNull(),
+  workflow: text('workflow', { mode: 'json' }).$type<GenerationProgress[]>().notNull().default([]),
 });

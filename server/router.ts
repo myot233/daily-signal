@@ -4,7 +4,8 @@ import { contract } from '../shared/contract';
 import { db, getState } from './db';
 import { digests, feeds, settings } from './schema';
 import { addFeed, exportOpml, importOpml, refreshFeeds } from './feeds';
-import { generateDigest, testConnection } from './ai';
+import { testConnection } from './ai';
+import { createGenerationService } from './generation';
 import { HttpError } from './errors';
 import { normalizePublicUrl, PublicFetchError } from './network';
 import { TemplateError, validateDigestTemplate } from '../shared/template';
@@ -31,7 +32,7 @@ const safeErrors = implementer.middleware(async ({ next }) => {
 });
 const rpc = implementer.use(safeErrors);
 let refreshing = false;
-let generating = false;
+const generation = createGenerationService();
 
 export const router = implementer.router({
   state: rpc.state.handler(() => getState()),
@@ -70,10 +71,9 @@ export const router = implementer.router({
   },
   digests: {
     generate: rpc.digests.generate.handler(async ({ input, context }) => {
-      if (generating) throw new HttpError(409, '日报正在生成，请等待完成。');
-      generating = true;
-      try { return await generateDigest(input, { signal: context.signal }); } finally { generating = false; }
+      return generation.generate(input, { signal: context.signal });
     }),
+    generateStream: rpc.digests.generateStream.handler(({ input, context }) => generation.stream(input, context.signal)),
     remove: rpc.digests.remove.handler(({ input }) => {
       const result = db.delete(digests).where(eq(digests.id, input.id)).run();
       if (!result.changes) throw new HttpError(404, '日报不存在。');

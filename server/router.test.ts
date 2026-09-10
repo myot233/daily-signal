@@ -78,3 +78,15 @@ test('missing records and private feed targets return safe typed errors', async 
   await assert.rejects(rpc.feeds.add({ url: 'http://127.0.0.1/private' }), error => typeof error === 'object' && error !== null && 'code' in error && error.code === 'BAD_REQUEST');
   assert.deepEqual((await rpc.state()).feeds, []);
 });
+
+test('generation endpoint streams preparation and a safe empty-day failure', async () => {
+  const events = await rpc.digests.generateStream({ date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'NEVER-STREAM-KEY' });
+  const received = [];
+  for await (const event of events) received.push(event);
+  assert.equal(received[0]?.type, 'progress');
+  assert.equal(received.at(-1)?.type, 'failed');
+  assert.match(JSON.stringify(received), /没有可总结的文章/);
+  assert.equal(JSON.stringify(received).includes('NEVER-STREAM-KEY'), false);
+  // Both generation routes share and release the same lock on failure.
+  await assert.rejects(rpc.digests.generate({ date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'KEY' }), error => error instanceof Error && 'code' in error && error.code === 'BAD_REQUEST');
+});

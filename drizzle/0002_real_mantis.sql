@@ -1,0 +1,1 @@
+ALTER TABLE `digests` ADD `workflow` text DEFAULT '[]' NOT NULL;

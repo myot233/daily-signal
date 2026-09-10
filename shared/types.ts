@@ -1,12 +1,19 @@
 import { z } from 'zod';
+import { generationProgressSchema } from './progress';
 
 export const feedSchema = z.object({
   id: z.string(), url: z.string(), title: z.string(), category: z.string(), siteUrl: z.string(),
   createdAt: z.string(), lastFetchedAt: z.string().nullable(), error: z.string().nullable(), articleCount: z.number().int().nonnegative(),
 });
+export const webFetchResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('success'), url: z.string(), fetchedAt: z.string(), content: z.string(), truncated: z.boolean() }),
+  z.object({ status: z.literal('error'), url: z.string(), fetchedAt: z.string(), error: z.string() }),
+]);
+export type WebFetchResult = z.infer<typeof webFetchResultSchema>;
 export const articleSchema = z.object({
   id: z.string(), feedId: z.string(), feedTitle: z.string(), title: z.string(), url: z.string(),
   content: z.string(), publishedAt: z.string(), dateEstimated: z.boolean(),
+  webFetch: webFetchResultSchema.optional(),
 });
 export const modelConfigSchema = z.object({
   baseUrl: z.string().trim().max(2_000).transform((value, ctx) => {
@@ -43,6 +50,7 @@ export const digestInputSchema = z.object({
 export const digestSchema = z.object({
   id: z.string(), date: z.string(), title: z.string(), markdown: z.string(), createdAt: z.string(),
   articleCount: z.number().int().nonnegative(), model: z.string(), sources: z.array(articleSchema),
+  workflow: z.array(generationProgressSchema).default([]),
 });
 export const appStateSchema = z.object({
   feeds: z.array(feedSchema), articles: z.array(articleSchema), digests: z.array(digestSchema),

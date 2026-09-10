@@ -10,11 +10,14 @@ import { ArticlesView } from './components/ArticlesView'
 import { ArchiveView } from './components/ArchiveView'
 import { TemplateView } from './components/TemplateView'
 import { SettingsView } from './components/SettingsView'
-import { errorMessage, formatDate, localDate, rpc } from './lib/client'
+import { GenerationPanel } from './components/GenerationProgress'
+import { dayBounds, errorMessage, formatDate, localDate, rpc } from './lib/client'
 import type { Notice, Perform, View } from './lib/client'
 import type { AppState, Settings } from '../shared/types'
 import { appStateQueryOptions } from './lib/query'
-import { apiKeyAtom } from './lib/state'
+import { apiKeyAtom, generationAtom } from './lib/state'
+import { digestInputSchema } from '../shared/types'
+import { updateProgress } from '../shared/progress'
 
 const navigation = [
   { id: 'today', path: '/', label: '今日简报', icon: Newspaper },
@@ -71,6 +74,7 @@ export default function App() {
   }
   const mobileOpen = mobileMenu.pathname === pathname && mobileMenu.open
   const [apiKey, setApiKey] = useAtom(apiKeyAtom)
+  const [generation, setGeneration] = useAtom(generationAtom)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const runAction = useActionMutation()
@@ -133,6 +137,35 @@ export default function App() {
       setNotice({ kind: result.errors.length ? 'warning' : 'success', message: `刷新完成，新增 ${result.added} 篇文章${result.errors.length ? `，${result.errors.length} 个来源获取失败。旧文章已保留。` : '。'}`, details: result.errors.map(item => `${item.url}：${item.error}`) })
     })
   }
+  function generate(date: string) {
+    void perform('生成日报', async () => {
+      const input = digestInputSchema.parse({ date, ...dayBounds(date), apiKey })
+      setGeneration({ date, status: 'running', startedAt: Date.now(), events: [] })
+      let completed = false
+      let failureMessage: string | undefined
+      try {
+        const events = await rpc.digests.generateStream(input)
+        for await (const event of events) {
+          if (event.type === 'progress') {
+            setGeneration(current => current && ({ ...current, current: event.progress.message, events: updateProgress(current.events, event.progress) }))
+          } else if (event.type === 'failed') {
+            failureMessage = event.message
+            throw new Error(event.message)
+          } else {
+            completed = true
+            setGeneration(current => current && ({ ...current, status: 'complete', finishedAt: Date.now(), events: event.digest.workflow }))
+            queryClient.setQueryData<AppState>(appStateQueryOptions.queryKey, current => current && ({ ...current, digests: [event.digest, ...current.digests.filter(digest => digest.id !== event.digest.id)] }))
+          }
+        }
+        if (!completed) throw new Error('生成连接已中断，请查看归档确认是否已保存，再决定是否重试。')
+      } catch (error) {
+        if (completed) return
+        const message = failureMessage ?? `生成连接中断或请求失败：${errorMessage(error)} 请查看归档确认是否已保存，再决定是否重试。`
+        setGeneration(current => current && ({ ...current, status: 'failed', finishedAt: Date.now(), error: message }))
+        throw new Error(message)
+      }
+    }, '日报已生成并归档。重要信息请通过原文核实。')
+  }
   const loading = stateQuery.isFetching
   const loadError = stateQuery.isError ? errorMessage(stateQuery.error) : null
   const props = state ? { state, busy: busy || (loading ? '读取数据' : null), perform, notify: setNotice } : null
@@ -150,11 +183,12 @@ export default function App() {
     <main className="main-content" id="main-content" tabIndex={-1}>
       <div className="workspace-topline"><span>个人技术阅读工作台</span><time dateTime={localDate()}>{formatDate(localDate())}</time></div>
       {notice && <div className={`inline-notice global-notice ${notice.kind}`} role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.kind === 'success' ? <CheckCircle2 size={18} /> : <CircleAlert size={18} />}<div><p>{notice.message}</p>{notice.details?.length ? <details><summary>查看详情（{notice.details.length}）</summary><ul>{notice.details.map((detail, index) => <li key={index}>{detail}</li>)}</ul></details> : null}</div><Button variant="ghost" size="icon-sm" aria-label="关闭通知" onClick={() => setNotice(null)}><X /></Button></div>}
-      {busy && <div className="busy-banner" role="status"><LoaderCircle className="spin" size={17} /><span>正在{busy}…{busy === '生成日报' ? '文章较多时将分批处理，可能发起多次模型调用，请保持页面打开。' : '请稍候。'}</span></div>}
+      {busy && busy !== '生成日报' && <div className="busy-banner" role="status"><LoaderCircle className="spin" size={17} /><span>正在{busy}…请稍候。</span></div>}
+      {generation && <GenerationPanel run={generation} />}
       {loadError && <div className="inline-notice error" role="alert"><p>{loadError}</p><Button variant="outline" disabled={loading || !!busy} onClick={() => void reload()}>{loading ? <LoaderCircle className="spin" /> : null}重新读取状态</Button></div>}
       {!state && loading && <div className="loading-state" role="status"><LoaderCircle className="spin" /><h1>正在打开你的阅读工作台</h1><p>读取本地订阅、设置与日报归档。</p></div>}
       <Routes>
-        <Route path="/" element={props && <TodayView {...props} apiKey={apiKey} navigate={navigate} refresh={refresh} />} />
+        <Route path="/" element={props && <TodayView {...props} apiKey={apiKey} navigate={navigate} refresh={refresh} generate={generate} />} />
         <Route path="/feeds" element={props && <FeedsView {...props} refresh={refresh} />} />
         <Route path="/articles" element={props && <ArticlesView {...props} navigate={navigate} />} />
         <Route path="/archive" element={props && <ArchiveView {...props} navigate={navigate} />} />

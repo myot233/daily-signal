@@ -32,7 +32,7 @@ export const defaultTemplate = `# {{ date }} 技术日报
 最多 3 个后续观察点，说明还缺什么信息；没有则写「暂无」。
 
 ---
-用中文写作，保留技术专有名词。避免营销措辞。区分事实和分析。不要把旧闻当作今日发布。RSS 只有摘要时，注明「基于订阅摘要」，不声称读过全文。`;
+用中文写作，保留技术专有名词。避免营销措辞。区分事实和分析。不要把旧闻当作今日发布。仅有订阅摘要时，注明「基于订阅摘要」；读取网页后按实际返回的文本写作，内容截断或不可读时明确说明，不声称读过全文。`;
 
 const dbPath = process.env.DATABASE_PATH ?? resolve('data/daily-signal.sqlite');
 if (dbPath !== ':memory:') mkdirSync(dirname(dbPath), { recursive: true, mode: 0o700 });

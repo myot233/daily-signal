@@ -5,7 +5,15 @@ import { ArrowUpRight, Download, FileCode2 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { download, formatDate, safeUrl } from '../lib/client'
-import type { Digest } from '../../shared/types'
+import type { Article, Digest } from '../../shared/types'
+import { GenerationTimeline } from './GenerationProgress'
+
+function WebReading({ source }: { source: Article }) {
+  const reading = source.webFetch
+  if (!reading) return <span>使用订阅内容</span>
+  if (reading.status === 'error') return <span>网页读取失败，使用订阅内容：{reading.error}</span>
+  return <details><summary>{reading.truncated ? '查看已读取的网页节选' : '查看已读取的网页文本'}</summary><p>读取于 {formatDate(reading.fetchedAt, true)} · {safeUrl(reading.url) ? <a href={safeUrl(reading.url)} target="_blank" rel="noopener noreferrer">抓取地址</a> : '抓取地址不可用'}</p><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 360, overflow: 'auto' }}>{reading.content}</pre></details>
+}
 
 export function RichMarkdown({ content }: { content: string }) {
   return <div className="prose"><Markdown skipHtml remarkPlugins={[remarkGfm]} urlTransform={(url, key) => key === 'src' ? undefined : safeUrl(url)} components={{
@@ -24,7 +32,8 @@ export function Report({ digest }: { digest: Digest }) {
       <html lang="zh-CN"><head><meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>{digest.title}</title><style>{exportStyles + exportLayoutStyles}</style></head>
         <body><main><header><div className="brand">DAILY SIGNAL · 技术日报</div><h1>{digest.title}</h1><p>{formatDate(digest.date)} · {digest.articleCount} 篇参考文章 · {digest.model}</p></header>
           <RichMarkdown content={digest.markdown} />
-          <footer><details><summary>查看归档来源快照（{digest.sources.length}）</summary><ol>{digest.sources.map(source => <li key={source.id}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : source.title} · {source.feedTitle}</li>)}</ol></details><p>生成于 {formatDate(digest.createdAt, true)}。AI 辅助整理，请以原文为准。</p></footer>
+          {digest.workflow.length > 0 && <details><summary>查看这份日报的生成过程</summary><GenerationTimeline events={digest.workflow} /></details>}
+          <footer><details><summary>查看归档来源快照（{digest.sources.length}）</summary><ol>{digest.sources.map(source => <li key={source.id}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : source.title} · {source.feedTitle}<WebReading source={source} /></li>)}</ol></details><p>生成于 {formatDate(digest.createdAt, true)}。AI 辅助整理，请以原文为准。</p></footer>
         </main></body>
       </html>,
     )
@@ -34,7 +43,8 @@ export function Report({ digest }: { digest: Digest }) {
     <div className="report-topline"><Badge variant="outline">已归档</Badge><div className="button-row"><Button variant="ghost" size="sm" onClick={() => download(digest.markdown, `daily-signal-${digest.date}.md`, 'text/markdown;charset=utf-8')}><Download />Markdown</Button><Button variant="ghost" size="sm" onClick={exportHtml}><FileCode2 />导出 HTML</Button></div></div>
     <div className="eyebrow">DAILY SIGNAL / {digest.date.replaceAll('-', '.')}</div><h2 className="report-title">{digest.title}</h2><p className="report-meta">{digest.articleCount} 篇参考文章 <span>·</span> {digest.model} <span>·</span> {formatDate(digest.createdAt, true)}</p>
     <RichMarkdown content={digest.markdown} />
-    <details className="source-index"><summary>查看参考来源（{digest.sources.length}）</summary><ol>{digest.sources.map(source => <li key={source.id}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}<ArrowUpRight size={13} /></a> : source.title}<span>{source.feedTitle}</span></li>)}</ol></details>
+    {digest.workflow.length > 0 && <details className="workflow-history"><summary>查看这份日报的生成过程</summary><GenerationTimeline events={digest.workflow} /></details>}
+    <details className="source-index"><summary>查看参考来源（{digest.sources.length}）</summary><ol>{digest.sources.map(source => <li key={source.id}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}<ArrowUpRight size={13} /></a> : source.title}<span>{source.feedTitle}</span><WebReading source={source} /></li>)}</ol></details>
     <p className="report-disclaimer">由 AI 辅助整理，可能存在遗漏或误读。重要信息请点击来源核实。</p>
   </article>
 }

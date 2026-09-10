@@ -15,6 +15,13 @@
       "when": 1788982375836,
       "tag": "0001_deepseek-thinking-mode",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789012109334,
+      "tag": "0002_real_mantis",
+      "breakpoints": true
     }
   ]
 }

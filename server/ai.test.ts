@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { digestInputSchema, settingsSchema } from '../shared/types';
 import type { DigestInput } from '../shared/types';
 import { HttpError } from './errors';
+import { MAX_READING_STEPS } from './webfetch';
+import type { GenerationProgress } from '../shared/progress';
 
 // Test-only loading boundary: select the isolated DB before importing its modules.
 process.env.DATABASE_PATH = ':memory:';
@@ -21,7 +23,12 @@ beforeEach(() => {
 function addArticle(id: string, content = 'A concrete release with a migration guide.', publishedAt = '2026-09-10T12:00:00.000Z', feedId = 'feed', url = `https://example.com/${id}`) {
   db.insert(articles).values({ id, feedId, title: `Release ${id}`, url, content, publishedAt, dateEstimated: false }).run();
 }
-function providerWithResponses(respond: (body: { messages: { role: string; content: string }[] }) => Response | Promise<Response>) {
+interface ProviderRequest {
+  messages: { role: string; content: string }[];
+  tools?: { function: { name: string } }[];
+  tool_choice?: string;
+}
+function providerWithResponses(respond: (body: ProviderRequest) => Response | Promise<Response>) {
   return createOpenAICompatible({
     name: 'test', baseURL: 'https://model.example.com/v1', apiKey: input.apiKey,
     fetch: async (_url, init) => respond(JSON.parse(String(init?.body))),
@@ -33,6 +40,137 @@ function completionResponse(content: string, reason = 'stop') {
     usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   });
 }
+
+function webfetchResponse(url: string, id = 'read-page') {
+  return Response.json({ id: 'tool-completion', object: 'chat.completion', created: 1, model: 'test-model',
+    choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: [
+      { id, type: 'function', function: { name: 'webfetch', arguments: JSON.stringify({ url }) } },
+    ] }, finish_reason: 'tool_calls' }],
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+  });
+}
+
+test('model reads a webpage through a tool, uses its result, and archives its evidence separately from RSS', async () => {
+  addArticle('release', 'Short RSS summary');
+  let calls = 0, fetches = 0;
+  const progress: GenerationProgress[] = [];
+  const model = providerWithResponses(body => {
+    calls++;
+    if (calls === 1) {
+      assert.ok(body.tools?.some(tool => tool.function.name === 'webfetch'));
+      return webfetchResponse('https://example.com/release');
+    }
+    const result = JSON.parse(body.messages.find(message => message.role === 'tool')?.content ?? '{}');
+    assert.equal(result.status, 'success');
+    assert.match(result.content, /Version 2 fixes the compiler/);
+    assert.equal(result.truncated, false);
+    return completionResponse('## 今日重点\nVersion 2 fixes the compiler.');
+  });
+  const report = await generateDigest(input, { model, onProgress: event => progress.push(event), fetchText: async (_url, options) => {
+    fetches++;
+    assert.ok(progress.some(event => event.kind === 'model' && event.status === 'running'));
+    assert.ok(progress.some(event => event.kind === 'webfetch' && event.status === 'running'));
+    assert.equal(progress.some(event => event.id === 'archive'), false);
+    assert.equal(JSON.stringify(options).includes(input.apiKey), false);
+    return { text: '<main><h1>Release</h1><p>Version 2 fixes the compiler.</p></main>', status: 200, ok: true, contentType: 'text/html' };
+  } });
+  assert.equal(calls, 2);
+  assert.equal(fetches, 1);
+  assert.equal(report.sources[0]?.content, 'Short RSS summary');
+  assert.equal(report.sources[0]?.webFetch?.status, 'success');
+  assert.equal(report.workflow.find(event => event.id === 'archive')?.status, 'success');
+  assert.equal(report.workflow.filter(event => event.kind === 'model').length, 2);
+  assert.ok(report.workflow.some(event => event.kind === 'webfetch' && event.status === 'success'));
+  assert.equal(report.workflow.some(event => event.status === 'running' || event.status === 'queued'), false);
+  assert.equal(JSON.stringify(progress).includes('Short RSS summary'), false);
+  assert.equal(JSON.stringify(progress).includes(input.apiKey), false);
+  assert.deepEqual(getState().digests[0]?.workflow, report.workflow);
+  assert.match(report.markdown, /已读取网页文本/);
+  assert.equal(getState().articles[0]?.webFetch, undefined);
+  db.delete(feeds).run();
+  assert.deepEqual(getState().digests[0]?.sources[0]?.webFetch, report.sources[0]?.webFetch);
+  assert.equal(JSON.stringify(getState()).includes(input.apiKey), false);
+});
+
+test('page failures return to the model so it can finish from the RSS summary', async () => {
+  addArticle('release');
+  let calls = 0;
+  const model = providerWithResponses(body => {
+    if (++calls === 1) return webfetchResponse('https://example.com/release');
+    const result = JSON.parse(body.messages.find(message => message.role === 'tool')?.content ?? '{}');
+    assert.equal(result.status, 'error');
+    assert.match(result.error, /HTTP 403/);
+    return completionResponse('基于订阅摘要：发布了一项更新。');
+  });
+  const report = await generateDigest(input, { model, fetchText: async () => ({ text: 'Forbidden', status: 403, ok: false }) });
+  assert.equal(calls, 2);
+  assert.equal(report.sources[0]?.webFetch?.status, 'error');
+  assert.match(report.markdown, /网页读取失败，使用订阅内容/);
+});
+
+test('repeated tool calls are cached and the final allowed step must write an answer', async () => {
+  addArticle('release');
+  let calls = 0, fetches = 0;
+  const model = providerWithResponses(body => {
+    calls++;
+    if (calls < MAX_READING_STEPS) return webfetchResponse('https://example.com/release', `read-${calls}`);
+    assert.equal(body.tools?.length ?? 0, 0);
+    assert.match(body.messages.find(message => message.role === 'system')?.content ?? '', /网页读取阶段已结束/);
+    return completionResponse('A finished digest.');
+  });
+  await generateDigest(input, { model, fetchText: async () => { fetches++; return { text: 'Page details', status: 200, ok: true, contentType: 'text/plain' }; } });
+  assert.equal(calls, MAX_READING_STEPS);
+  assert.equal(fetches, 1);
+});
+
+test('a model that never finishes its tool loop cannot create an incomplete report', async () => {
+  addArticle('release');
+  let calls = 0;
+  const model = providerWithResponses(() => webfetchResponse('https://example.com/release', `read-${++calls}`));
+  await assert.rejects(generateDigest(input, { model, fetchText: async () => ({ text: 'Page detail', status: 200, ok: true, contentType: 'text/plain' }) }), error => error instanceof HttpError && error.status === 502);
+  assert.equal(calls, MAX_READING_STEPS);
+  assert.equal(getState().digests.length, 0);
+});
+
+test('a provider that rejects tools returns an actionable error without leaking its response', async () => {
+  addArticle('release');
+  const model = providerWithResponses(() => Response.json({ error: { message: input.apiKey } }, { status: 400 }));
+  await assert.rejects(generateDigest(input, { model }), error => {
+    assert.ok(error instanceof HttpError);
+    assert.match(error.message, /支持工具调用/);
+    assert.equal(error.message.includes(input.apiKey), false);
+    return true;
+  });
+  assert.equal(getState().digests.length, 0);
+});
+
+test('batches and synthesis share cached page results', async () => {
+  for (let index = 0; index < 8; index++) addArticle(`item-${index}`, 'x'.repeat(6_000));
+  let fetches = 0, stages = 0;
+  const model = providerWithResponses(body => {
+    if (body.messages.at(-1)?.role !== 'tool') {
+      stages++;
+      return webfetchResponse('https://example.com/item-0', `read-${stages}`);
+    }
+    assert.match(body.messages.at(-1)?.content ?? '', /Shared page detail/);
+    return completionResponse('Shared page detail: https://example.com/item-0');
+  });
+  const report = await generateDigest(input, { model, fetchText: async () => { fetches++; return { text: 'Shared page detail', status: 200, ok: true, contentType: 'text/plain' }; } });
+  assert.ok(stages > 2);
+  assert.equal(fetches, 1);
+  assert.equal(report.sources.filter(source => source.webFetch?.status === 'success').length, 1);
+});
+
+test('cancelling during a page read leaves no new report', async () => {
+  addArticle('release');
+  const controller = new AbortController();
+  const model = providerWithResponses(() => webfetchResponse('https://example.com/release'));
+  await assert.rejects(generateDigest(input, { model, signal: controller.signal, fetchText: async () => {
+    controller.abort();
+    throw new Error('PRIVATE-CANCEL-REASON');
+  } }), error => error instanceof HttpError && error.status === 504 && !error.message.includes('PRIVATE-CANCEL-REASON'));
+  assert.equal(getState().digests.length, 0);
+});
 
 test('digest templates receive the actual date and deduplicated sources before synthesis', async () => {
   addArticle('first', 'short', undefined, 'feed', 'https://example.com/release');

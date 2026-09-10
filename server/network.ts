@@ -76,6 +76,15 @@ export interface FetchOptions {
   timeoutMs?: number;
   maxBytes?: number;
   signal?: AbortSignal;
+  acceptContentTypes?: string[];
+}
+
+export interface FetchResult {
+  text: string;
+  status: number;
+  ok: boolean;
+  contentType?: string;
+  url?: string;
 }
 
 function safeFailure(error: unknown): PublicFetchError {
@@ -92,7 +101,7 @@ function safeFailure(error: unknown): PublicFetchError {
 // The dispatcher seam is for isolated network tests; production always uses
 // the connector above, which validates DNS answers on the actual connection.
 export function createPublicFetcher(transport: Dispatcher) {
-return async function fetchPublicText(value: string, options: FetchOptions = {}): Promise<{ text: string; status: number; ok: boolean }> {
+return async function fetchPublicText(value: string, options: FetchOptions = {}): Promise<FetchResult> {
   let current = normalizePublicUrl(value);
   const timeoutMs = options.timeoutMs ?? 20_000;
   const maxBytes = options.maxBytes ?? 3 * 1024 * 1024;
@@ -133,6 +142,11 @@ return async function fetchPublicText(value: string, options: FetchOptions = {})
         current = next;
         continue;
       }
+      const contentType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '';
+      if (response.ok && options.acceptContentTypes && !options.acceptContentTypes.includes(contentType)) {
+        await response.body?.cancel();
+        throw new PublicFetchError('页面不是支持的 HTML 或纯文本内容。');
+      }
       const declaredSize = Number(response.headers.get('content-length'));
       if (Number.isFinite(declaredSize) && declaredSize > maxBytes) {
         await response.body?.cancel();
@@ -163,7 +177,7 @@ return async function fetchPublicText(value: string, options: FetchOptions = {})
         }
       }
       signal.throwIfAborted();
-      return { text, status: response.status, ok: response.ok };
+      return { text, status: response.status, ok: response.ok, contentType, url: current };
     }
   } catch (error) {
     if (options.signal?.aborted && signal.reason === options.signal.reason) throw new PublicFetchError('请求已取消。', 'cancelled');

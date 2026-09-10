@@ -88,7 +88,7 @@ export function SettingsView({
         <div>
           <div className="eyebrow">自带密钥 · 自主选择</div>
           <h1>选择你的思考搭档。</h1>
-          <p>连接公开的 OpenAI-compatible 服务，用你自己的模型与额度。</p>
+          <p>连接支持工具调用的 OpenAI-compatible 模型，让 AI 按需读取文章网页。连接测试仅验证文本响应。</p>
         </div>
         <Badge variant={dirty ? "outline" : "secondary"}>
           {!dirty && <Check size={12} />}

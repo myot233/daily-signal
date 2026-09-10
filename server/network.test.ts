@@ -94,7 +94,7 @@ test('GET follows four redirects but rejects the fifth', async () => {
   pool.intercept({ path: '/ok4' }).reply(200, 'last');
   for (let index = 0; index < 5; index++) pool.intercept({ path: `/loop${index}` }).reply(302, '', { headers: { location: `/loop${index + 1}` } });
   try {
-    assert.deepEqual(await createPublicFetcher(agent)('https://fixture.example.com/ok0'), { text: 'last', status: 200, ok: true });
+    assert.deepEqual(await createPublicFetcher(agent)('https://fixture.example.com/ok0'), { text: 'last', status: 200, ok: true, url: 'https://fixture.example.com/ok4', contentType: '' });
     await assert.rejects(createPublicFetcher(agent)('https://fixture.example.com/loop0'), error => error instanceof PublicFetchError && error.message.includes('重定向'));
   } finally { await agent.close(); }
 });
@@ -168,7 +168,7 @@ test('already cancelled calls do not dispatch a request; HTTP failures return st
   try {
     await assert.rejects(fetchText('https://fixture.example.com/', { signal: AbortSignal.abort('secret') }), error => error instanceof PublicFetchError && error.kind === 'cancelled');
     assert.equal(requested, false);
-    assert.deepEqual(await fetchText('https://fixture.example.com/'), { text: 'upstream response', status: 401, ok: false });
+    assert.deepEqual(await fetchText('https://fixture.example.com/'), { text: 'upstream response', status: 401, ok: false, url: 'https://fixture.example.com/', contentType: '' });
     agent.get('https://fixture.example.com').intercept({ path: '/error' }).replyWithError(new Error('sentinel-secret-raw-error'));
     await assert.rejects(fetchText('https://fixture.example.com/error'), error => error instanceof PublicFetchError && !error.message.includes('sentinel'));
   } finally { await agent.close(); }
