@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788979578645,
+      "tag": "0000_colossal_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788982375836,
+      "tag": "0001_deepseek-thinking-mode",
+      "breakpoints": true
+    }
+  ]
+}
