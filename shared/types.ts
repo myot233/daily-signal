@@ -27,7 +27,20 @@ export const modelConfigSchema = z.object({
 export const apiKeySchema = z.string().max(4_096)
   .refine(value => !/\p{Cc}/u.test(value), 'API Key 不能包含控制字符。')
   .transform(value => value.trim()).pipe(z.string().min(1, '请输入 API Key。'));
-export const settingsSchema = modelConfigSchema.extend({ template: z.string().trim().min(1, '模板不能为空。').max(12_000) }).strict();
+export const autoDigestSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    time: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, '自动日报时间必须使用 HH:mm 24 小时格式。'),
+  })
+  .strict();
+export const settingsSchema = modelConfigSchema
+  .extend({
+    template: z.string().trim().min(1, '模板不能为空。').max(12_000),
+    autoDigest: autoDigestSettingsSchema.default({ enabled: false, time: '20:00' }),
+  })
+  .strict();
 // Omitted keeps the saved key; null explicitly removes it. Responses never contain it.
 export const settingsUpdateSchema = settingsSchema.extend({ apiKey: apiKeySchema.nullable().optional() });
 export const connectionSchema = modelConfigSchema.extend({ apiKey: apiKeySchema.optional() }).strict();

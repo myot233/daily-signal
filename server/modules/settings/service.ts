@@ -5,6 +5,7 @@ import { settings } from '../../infrastructure/database/schema';
 import { normalizePublicUrl } from '../../infrastructure/network/public-fetch';
 import { replaceLegacyDefaultConnection } from '../providers/repository';
 import { getSettings } from './repository';
+import { refreshDailyDigestSchedule } from '../ai/daily-digest-scheduler';
 
 export function saveSettings(input: SettingsUpdate): Settings {
   normalizePublicUrl(input.baseUrl);
@@ -18,5 +19,6 @@ export function saveSettings(input: SettingsUpdate): Settings {
     replaceLegacyDefaultConnection(value, apiKey);
   }
   db.update(settings).set({ value }).where(eq(settings.id, 1)).run();
+  refreshDailyDigestSchedule();
   return getSettings();
 }

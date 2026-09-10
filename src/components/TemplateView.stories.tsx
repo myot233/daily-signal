@@ -85,6 +85,36 @@ export const Default: Story = {
   },
 };
 
+export const ConfigureAutomaticDigest: Story = {
+  args: {
+    state: createAppState({
+      defaultProviderModelId: '00000000-0000-4000-8000-000000000002',
+      hasApiKey: true,
+    }),
+    saveSettings: fn<TemplateProps['saveSettings']>(async (settings) => settingsSchema.parse(settings)),
+  },
+  play: async ({ canvasElement, args, userEvent }) => {
+    const canvas = within(canvasElement);
+    const enabled = canvas.getByRole('checkbox', { name: /每天自动生成/ });
+    const time = canvas.getByLabelText('自动生成时间');
+    await expect(enabled).not.toBeChecked();
+    await expect(time).toHaveValue('20:00');
+
+    await userEvent.click(enabled);
+    await userEvent.clear(time);
+    await userEvent.type(time, '21:30');
+    await userEvent.click(canvas.getByRole('button', { name: '保存自动任务' }));
+
+    await expect(await canvas.findByRole('status')).toHaveTextContent(
+      '自动日报将在每天本地时间 21:30 生成。',
+    );
+    await expect(args.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ autoDigest: { enabled: true, time: '21:30' } }),
+    );
+    await expect(enabled).toBeChecked();
+  },
+};
+
 export const EditPreviewAndDiscard: Story = {
   play: async ({ canvasElement, args, userEvent }) => {
     const canvas = within(canvasElement);

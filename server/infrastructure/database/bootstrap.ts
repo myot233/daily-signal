@@ -22,6 +22,7 @@ export function bootstrapDatabase(db: BetterSQLite3Database, sqlite: Database.Da
         model: 'gpt-4.1-mini',
         template: defaultTemplate,
         deepseekThinking: 'disabled',
+        autoDigest: { enabled: false, time: '20:00' },
       },
     })
     .onConflictDoNothing()
