@@ -52,10 +52,51 @@ export const digestSchema = z.object({
   providerProtocol: providerProtocolSchema.nullable(), providerModelId: z.string().uuid().nullable(),
   providerOptions: providerOptionsSchema.nullable(),
 });
+export const digestGenerationStatusSchema = z.enum(['running', 'completed', 'failed']);
+const digestGenerationEventMeta = {
+  id: z.number().int().positive(),
+  sessionId: z.string().uuid(),
+  createdAt: z.string(),
+};
+export const digestGenerationEventSchema = z.discriminatedUnion('type', [
+  z.object({ ...digestGenerationEventMeta, type: z.literal('queued') }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('preparing'),
+    articleCount: z.number().int().nonnegative(),
+    batchCount: z.number().int().positive(),
+  }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('extracting'),
+    current: z.number().int().positive(),
+    total: z.number().int().positive(),
+  }),
+  z.object({ ...digestGenerationEventMeta, type: z.literal('synthesizing') }),
+  z.object({ ...digestGenerationEventMeta, type: z.literal('archiving') }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('completed'),
+    digestId: z.string().min(1),
+  }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('failed'),
+    message: z.string().min(1),
+  }),
+]);
+export const digestGenerationStartSchema = z.object({ sessionId: z.string().uuid() });
+export const digestGenerationSubscriptionSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    afterEventId: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 export const appStateSchema = z.object({
   feeds: z.array(feedSchema), articles: z.array(articleSchema), digests: z.array(digestSchema),
   settings: settingsSchema, hasApiKey: z.boolean(), defaultTemplate: z.string(),
   providers: z.array(providerConnectionSchema), defaultProviderModelId: z.string().uuid().nullable(),
+  activeDigestGenerationSessionId: z.string().uuid().nullable(),
 });
 const sourceErrorSchema = z.object({ url: z.string(), error: z.string() });
 export const refreshResultSchema = z.object({ added: z.number().int().nonnegative(), errors: z.array(sourceErrorSchema) });
@@ -71,6 +112,19 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
 export type Digest = z.infer<typeof digestSchema>;
 export type AppState = z.infer<typeof appStateSchema>;
+export type DigestGenerationStatus = z.infer<typeof digestGenerationStatusSchema>;
+export type DigestGenerationEvent = z.infer<typeof digestGenerationEventSchema>;
+type WithoutGenerationEventMeta<T> = T extends unknown
+  ? Omit<T, 'id' | 'sessionId' | 'createdAt'>
+  : never;
+export type DigestGenerationEventData = WithoutGenerationEventMeta<DigestGenerationEvent>;
+export type DigestGenerationProgress = Exclude<
+  DigestGenerationEventData,
+  { type: 'queued' | 'completed' | 'failed' }
+>;
+export type DigestGenerationSubscription = z.infer<
+  typeof digestGenerationSubscriptionSchema
+>;
 export type RefreshResult = z.infer<typeof refreshResultSchema>;
 export type ImportResult = z.infer<typeof importResultSchema>;
 export type ConnectionInput = z.infer<typeof connectionSchema>;

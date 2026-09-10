@@ -3,7 +3,13 @@ import { APICallError, generateText } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { SharedV4ProviderOptions as AiProviderOptions } from '@ai-sdk/provider';
 import { connectionSchema, digestInputSchema } from '../../../shared/types';
-import type { Article, ConnectionInput, Digest, DigestInput } from '../../../shared/types';
+import type {
+  Article,
+  ConnectionInput,
+  Digest,
+  DigestGenerationProgress,
+  DigestInput,
+} from '../../../shared/types';
 import { getApiKey, getSettings } from '../settings/repository';
 import { listArticles } from '../feeds/repository';
 import { saveDigest } from './repository';
@@ -21,6 +27,7 @@ interface AiOptions {
   signal?: AbortSignal;
   model?: LanguageModel;
   transport?: typeof fetchPublicText;
+  onProgress?: (event: DigestGenerationProgress) => void;
 }
 
 class ProviderStageError extends HttpError {
@@ -206,6 +213,11 @@ export async function generateDigest(
     currentSize += encoded.length + 1;
   }
   if (current.length) batches.push(`[${current.join(',')}]`);
+  options.onProgress?.({
+    type: 'preparing',
+    articleCount: sources.length,
+    batchCount: batches.length,
+  });
   const timeout = AbortSignal.timeout(10 * 60_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const runtime = options.model
@@ -229,6 +241,7 @@ export async function generateDigest(
   if (batches.length > 1) {
     const extracts: string[] = [];
     for (let index = 0; index < batches.length; index++) {
+      options.onProgress?.({ type: 'extracting', current: index + 1, total: batches.length });
       // The saved ceiling applies to every stage. Gateways may enable reasoning
       // without an explicit option, so local flags cannot justify a smaller cap.
       extracts.push(
@@ -245,6 +258,7 @@ export async function generateDigest(
     }
     material = JSON.stringify({ extracts });
   }
+  options.onProgress?.({ type: 'synthesizing' });
   const text = await complete(
     runtime.model,
     `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${snapshot.template}`,
@@ -279,6 +293,7 @@ export async function generateDigest(
     providerModelId: snapshot.model.id,
     providerOptions: snapshot.provider.options,
   };
+  options.onProgress?.({ type: 'archiving' });
   signal.throwIfAborted();
   saveDigest(digest);
   return digest;

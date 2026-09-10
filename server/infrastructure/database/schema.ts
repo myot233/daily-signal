@@ -1,5 +1,10 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { Article, Settings } from '../../../shared/types';
+import type {
+  Article,
+  DigestGenerationEventData,
+  DigestGenerationStatus,
+  Settings,
+} from '../../../shared/types';
 import type {
   ProviderModelCapabilities,
   ProviderModelOptions,
@@ -58,6 +63,28 @@ export const digests = sqliteTable('digests', {
   providerModelId: text('provider_model_id'),
   providerOptions: text('provider_options', { mode: 'json' }).$type<ProviderOptions>(),
 });
+export const digestGenerationSessions = sqliteTable(
+  'digest_generation_sessions',
+  {
+    id: text('id').primaryKey(),
+    status: text('status').$type<DigestGenerationStatus>().notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [index('digest_generation_sessions_status').on(table.status, table.updatedAt)],
+);
+export const digestGenerationEvents = sqliteTable(
+  'digest_generation_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => digestGenerationSessions.id, { onDelete: 'cascade' }),
+    event: text('event', { mode: 'json' }).$type<DigestGenerationEventData>().notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [index('digest_generation_events_session').on(table.sessionId, table.id)],
+);
 
 export const providers = sqliteTable('providers', {
   id: text('id').primaryKey(),

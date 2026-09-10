@@ -1,9 +1,11 @@
-import { HttpError } from '../core/errors';
 import { removeDigest } from '../modules/ai/repository';
-import { generateDigest, testConnection } from '../modules/ai/service';
+import {
+  ensureDigestGenerationSession,
+  startDigestGeneration,
+  subscribeDigestGeneration,
+} from '../modules/ai/generation-queue';
+import { testConnection } from '../modules/ai/service';
 import { rpc } from './procedure';
-
-let generating = false;
 
 export const aiProcedures = {
   test: rpc.ai.test.handler(async ({ input, context }) => {
@@ -13,14 +15,10 @@ export const aiProcedures = {
 };
 
 export const digestProcedures = {
-  generate: rpc.digests.generate.handler(async ({ input, context }) => {
-    if (generating) throw new HttpError(409, '日报正在生成，请等待完成。');
-    generating = true;
-    try {
-      return await generateDigest(input, { signal: context.signal });
-    } finally {
-      generating = false;
-    }
+  generate: rpc.digests.generate.handler(({ input }) => startDigestGeneration(input)),
+  subscribe: rpc.digests.subscribe.handler(({ input, context }) => {
+    ensureDigestGenerationSession(input.sessionId);
+    return subscribeDigestGeneration(input, context.signal);
   }),
   remove: rpc.digests.remove.handler(({ input }) => {
     removeDigest(input.id);

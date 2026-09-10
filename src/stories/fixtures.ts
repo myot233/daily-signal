@@ -7,6 +7,7 @@ export function createAppState(overrides: Partial<AppState> = {}): AppState {
     digests: [],
     providers: [],
     defaultProviderModelId: null,
+    activeDigestGenerationSessionId: null,
     hasApiKey: false,
     settings: {
       baseUrl: 'https://api.example.com/v1',

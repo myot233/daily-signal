@@ -12,7 +12,7 @@ import { ArchiveView } from './components/ArchiveView'
 import { TemplateView } from './components/TemplateView'
 import { SettingsView } from './components/SettingsView'
 import { errorMessage, formatDate, localDate, rpc } from './lib/client'
-import type { Notice, Perform, View } from './lib/client'
+import type { DigestGenerationState, Notice, Perform, StartDigestGeneration, View } from './lib/client'
 import type { AppState, SettingsUpdate } from '../shared/types'
 import { appStateQueryOptions } from './lib/query'
 
@@ -72,12 +72,84 @@ export default function App() {
   const mobileOpen = mobileMenu.pathname === pathname && mobileMenu.open
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const [digestGeneration, setDigestGeneration] = useState<DigestGenerationState | null>(null)
   const runAction = useActionMutation()
   const store = useStore()
+  const latestDigestGenerationEvent = digestGeneration?.events.at(-1)
+  const digestGenerationTerminal =
+    latestDigestGenerationEvent?.type === 'completed' ||
+    latestDigestGenerationEvent?.type === 'failed'
+  const activeDigestGenerationSessionId = state?.activeDigestGenerationSessionId ?? null
+  const generationSessionId =
+    activeDigestGenerationSessionId ??
+    (digestGenerationTerminal ? null : digestGeneration?.sessionId ?? null)
+  const visibleDigestGeneration =
+    activeDigestGenerationSessionId &&
+    digestGeneration?.sessionId !== activeDigestGenerationSessionId
+      ? { sessionId: activeDigestGenerationSessionId, events: [] }
+      : digestGeneration
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [pathname])
+
+  useEffect(() => {
+    const sessionId = generationSessionId
+    if (!sessionId) return
+
+    const controller = new AbortController()
+    let afterEventId = 0
+    void (async () => {
+      while (!controller.signal.aborted) {
+        try {
+          const events = await rpc.digests.subscribe(
+            { sessionId, afterEventId },
+            { signal: controller.signal },
+          )
+          for await (const event of events) {
+            afterEventId = event.id
+            setDigestGeneration(current => {
+              const currentEvents =
+                current?.sessionId === sessionId ? current.events : []
+              if (currentEvents.some(existing => existing.id === event.id)) return current
+              return { sessionId, events: [...currentEvents, event] }
+            })
+            if (event.type !== 'completed' && event.type !== 'failed') continue
+
+            queryClient.setQueryData<AppState>(appStateQueryOptions.queryKey, current =>
+              current ? { ...current, activeDigestGenerationSessionId: null } : current,
+            )
+            try {
+              await queryClient.invalidateQueries(
+                { queryKey: appStateQueryOptions.queryKey, exact: true },
+                { throwOnError: true },
+              )
+              setNotice(event.type === 'completed'
+                ? { kind: 'success', message: '日报已生成并归档。重要信息请通过原文核实。' }
+                : { kind: 'error', message: event.message })
+            } catch {
+              setNotice({
+                kind: 'warning',
+                message: event.type === 'completed'
+                  ? '日报已生成，但最新归档读取失败。请重新读取状态，不要重复生成。'
+                  : event.message,
+              })
+            }
+            return
+          }
+          return
+        } catch {
+          if (controller.signal.aborted) return
+          setNotice({
+            kind: 'warning',
+            message: '实时进度连接中断，正在从本地事件队列续接。',
+          })
+          await new Promise(resolve => window.setTimeout(resolve, 1_000))
+        }
+      }
+    })()
+    return () => controller.abort()
+  }, [generationSessionId, queryClient])
 
   const reload = useCallback(async () => {
     if (store.get(operationLockAtom)) return
@@ -115,6 +187,15 @@ export default function App() {
       setBusy(null)
     }
   }, [runAction, queryClient, store])
+  const startDigestGeneration: StartDigestGeneration = useCallback(async input => {
+    let sessionId: string | null = null
+    const started = await perform('生成日报', async () => {
+      const result = await rpc.digests.generate(input)
+      sessionId = result.sessionId
+      setDigestGeneration({ sessionId: result.sessionId, events: [] })
+    })
+    return started && sessionId !== null
+  }, [perform])
 
   const saveSettings = useCallback(async (settings: SettingsUpdate) => {
     const saved = await rpc.settings.save(settings)
@@ -134,7 +215,15 @@ export default function App() {
   }
   const loading = stateQuery.isFetching
   const loadError = stateQuery.isError ? errorMessage(stateQuery.error) : null
-  const props = state ? { state, busy: busy || (loading ? '读取数据' : null), perform, notify: setNotice } : null
+  const generationRunning = Boolean(
+    activeDigestGenerationSessionId || (digestGeneration && !digestGenerationTerminal),
+  )
+  const props = state ? {
+    state,
+    busy: busy || (generationRunning ? '生成日报' : loading ? '读取数据' : null),
+    perform,
+    notify: setNotice,
+  } : null
 
   return <div className="min-h-dvh">
     <a href="#main-content" className="fixed z-100 top-3 left-3 py-2.5 px-4.5 bg-primary text-white -translate-y-[160%] rounded-[6px] focus:translate-y-0">跳转到正文</a>
@@ -149,11 +238,11 @@ export default function App() {
     <main className="max-w-375 ml-59.5 pt-0 px-12 pb-5.5 min-h-dvh min-[1700px]:px-17.5 max-[1150px]:ml-53.5 max-[1150px]:px-7.5 max-[800px]:ml-47.5 max-[800px]:px-5.5 max-[640px]:ml-0 max-[640px]:pt-0 max-[640px]:px-5 max-[640px]:pb-5" id="main-content" tabIndex={-1}>
       <div className="h-19.75 flex items-center justify-between border-b border-b-border text-[11px] text-[#827e72] tracking-[.5px] mb-9.75 max-[640px]:h-13.5 max-[640px]:text-[9px] max-[640px]:mb-6.5 max-[640px]:tracking-[0]"><span>个人技术阅读工作台</span><time dateTime={localDate()}>{formatDate(localDate())}</time></div>
       {notice && <div className={`border py-3.5 px-4.25 rounded-[7px] mb-5.5 text-[12px] leading-[1.8] wrap-anywhere [&.success]:bg-[#edf2e8] [&.success]:text-[#4d6542] [&.success]:border-[#d5e0cc] [&.warning]:bg-[#f7efdc] [&.warning]:text-[#826426] [&.warning]:border-[#e8d8b2] [&.error]:bg-[#f9eae3] [&.error]:text-[#a14536] [&.error]:border-[#edc8ba] [&_ul]:pl-5 [&_ul]:list-disc [&_ul]:mt-2 [&_ul]:mx-0 [&_ul]:mb-0 [&_details]:mt-1.5 flex gap-2.75 items-start [&_>_svg]:mt-0.5 [&_>_svg]:flex-none [&_>_div]:flex-1 [&_>_div]:min-w-0 [&_>_button]:-mt-0.75 [&_>_button]:-mr-1.25 [&_>_button]:-mb-0.75 [&_>_button]:ml-0 ${notice.kind}`} role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.kind === 'success' ? <CheckCircle2 size={18} /> : <CircleAlert size={18} />}<div><p>{notice.message}</p>{notice.details?.length ? <details><summary>查看详情（{notice.details.length}）</summary><ul>{notice.details.map((detail, index) => <li key={index}>{detail}</li>)}</ul></details> : null}</div><Button variant="ghost" size="icon-sm" aria-label="关闭通知" onClick={() => setNotice(null)}><X /></Button></div>}
-      {busy && <div className="flex items-center gap-2.5 bg-[#ede9dc] text-[#7a6647] py-3 px-4 text-[12px] mb-5.5 rounded-[6px] [&_svg]:shrink-0" role="status"><LoaderCircle className="animate-spin" size={17} /><span>正在{busy}…{busy === '生成日报' ? '文章较多时将分批处理，可能发起多次模型调用，请保持页面打开。' : '请稍候。'}</span></div>}
+      {busy && busy !== '生成日报' && <div className="flex items-center gap-2.5 bg-[#ede9dc] text-[#7a6647] py-3 px-4 text-[12px] mb-5.5 rounded-[6px] [&_svg]:shrink-0" role="status"><LoaderCircle className="animate-spin" size={17} /><span>正在{busy}…请稍候。</span></div>}
       {loadError && <div className="border py-3.5 px-4.25 rounded-[7px] mb-5.5 text-[12px] leading-[1.8] wrap-anywhere [&.success]:bg-[#edf2e8] [&.success]:text-[#4d6542] [&.success]:border-[#d5e0cc] [&.warning]:bg-[#f7efdc] [&.warning]:text-[#826426] [&.warning]:border-[#e8d8b2] [&.error]:bg-[#f9eae3] [&.error]:text-[#a14536] [&.error]:border-[#edc8ba] [&_ul]:pl-5 [&_ul]:list-disc [&_ul]:mt-2 [&_ul]:mx-0 [&_ul]:mb-0 [&_details]:mt-1.5 [&_>_button]:mt-2 error" role="alert"><p>{loadError}</p><Button variant="outline" disabled={loading || !!busy} onClick={() => void reload()}>{loading ? <LoaderCircle className="animate-spin" /> : null}重新读取状态</Button></div>}
       {!state && loading && <div className="min-h-100 flex flex-col items-center justify-center gap-5 text-center text-muted-foreground [&_h1]:font-serif [&_h1]:text-[24px] [&_h1]:text-foreground" role="status"><LoaderCircle className="animate-spin" /><h1>正在打开你的阅读工作台</h1><p>读取本地订阅、设置与日报归档。</p></div>}
       <Routes>
-        <Route path="/" element={props && <TodayView {...props} navigate={navigate} refresh={refresh} />} />
+        <Route path="/" element={props && <TodayView {...props} generation={visibleDigestGeneration} startGeneration={startDigestGeneration} navigate={navigate} refresh={refresh} />} />
         <Route path="/feeds" element={props && <FeedsView {...props} refresh={refresh} />} />
         <Route path="/articles" element={props && <ArticlesView {...props} navigate={navigate} />} />
         <Route path="/archive" element={props && <ArchiveView {...props} navigate={navigate} />} />
