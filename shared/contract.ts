@@ -1,6 +1,22 @@
-import { oc } from '@orpc/contract';
+import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
-import { addFeedSchema, appStateSchema, connectionSchema, digestInputSchema, digestSchema, feedSchema, idSchema, importOpmlSchema, importResultSchema, okSchema, refreshResultSchema, settingsSchema, settingsUpdateSchema } from './types';
+import {
+  addFeedSchema,
+  appStateSchema,
+  connectionSchema,
+  digestGenerationEventSchema,
+  digestGenerationStartSchema,
+  digestGenerationSubscriptionSchema,
+  digestInputSchema,
+  feedSchema,
+  idSchema,
+  importOpmlSchema,
+  importResultSchema,
+  okSchema,
+  refreshResultSchema,
+  settingsSchema,
+  settingsUpdateSchema,
+} from './types';
 import {
   providerConnectionSchema, providerCreateSchema, providerDiscoverResultSchema, providerDiscoverSchema,
   providerListSchema, providerModelRemoveSchema, providerModelSaveSchema, providerModelSchema,
@@ -37,7 +53,10 @@ export const contract = {
   defaultModel: { set: procedure.input(setDefaultProviderModelSchema).output(okSchema) },
   ai: { test: procedure.input(connectionSchema).output(okSchema) },
   digests: {
-    generate: procedure.input(digestInputSchema).output(digestSchema),
+    generate: procedure.input(digestInputSchema).output(digestGenerationStartSchema),
+    subscribe: procedure
+      .input(digestGenerationSubscriptionSchema)
+      .output(eventIterator(digestGenerationEventSchema)),
     remove: procedure.input(idSchema).output(okSchema),
   },
 };

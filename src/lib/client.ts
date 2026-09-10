@@ -3,12 +3,21 @@ import { RPCLink } from '@orpc/client/fetch'
 import type { ContractRouterClient } from '@orpc/contract'
 import { ZodError } from 'zod'
 import type { contract } from '../../shared/contract'
-import type { AppState } from '../../shared/types'
+import type {
+  AppState,
+  DigestGenerationEvent,
+  DigestInput,
+} from '../../shared/types'
 
 export type View = 'today' | 'feeds' | 'articles' | 'archive' | 'template' | 'settings'
 export type Notice = { kind: 'success' | 'error' | 'warning'; message: string; details?: string[] }
 export type Perform = (label: string, action: () => Promise<void>, success?: string) => Promise<boolean>
 export type ViewProps = { state: AppState; busy: string | null; perform: Perform; notify: (notice: Notice) => void }
+export type DigestGenerationState = {
+  sessionId: string
+  events: DigestGenerationEvent[]
+}
+export type StartDigestGeneration = (input: DigestInput) => Promise<boolean>
 
 export const rpc: ContractRouterClient<typeof contract> = createORPCClient(new RPCLink({
   url: () => `${window.location.origin}/rpc`,

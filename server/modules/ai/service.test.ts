@@ -3,7 +3,7 @@ import { beforeEach, test } from 'node:test';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { eq } from 'drizzle-orm';
 import { digestInputSchema, settingsSchema } from '../../../shared/types';
-import type { DigestInput } from '../../../shared/types';
+import type { DigestGenerationProgress, DigestInput } from '../../../shared/types';
 import { createLegacyRuntimeModel } from '../providers/adapters';
 import type { ProviderTransport } from '../providers/transport';
 import { HttpError } from '../../core/errors';
@@ -163,6 +163,7 @@ test('multiple batches cover the final article, and a failed synthesis preserves
     addArticle(`item-${index}`, `${index}: ${'Content. '.repeat(660)}`);
   let requests = 0;
   const seen = new Set<string>();
+  const progress: DigestGenerationProgress[] = [];
   const successfulModel = providerWithResponses((body) => {
     requests++;
     const prompt = body.messages.find((message) => message.role === 'user')?.content ?? '';
@@ -170,10 +171,27 @@ test('multiple batches cover the final article, and a failed synthesis preserves
       if (prompt.includes(`"id":"item-${index}"`)) seen.add(`item-${index}`);
     return completionResponse('## 今日重点\nDocumented release.');
   });
-  const saved = await generateDigest(input, { model: successfulModel });
+  const saved = await generateDigest(input, {
+    model: successfulModel,
+    onProgress: (event) => progress.push(event),
+  });
   assert.equal(saved.articleCount, 12);
   assert.equal(seen.size, 12);
   assert.ok(requests > 1, 'Large input must be batched');
+  const prepared = progress[0];
+  assert.equal(prepared?.type, 'preparing');
+  if (prepared?.type !== 'preparing') assert.fail('Preparation progress was not emitted.');
+  assert.equal(prepared.articleCount, 12);
+  const extractions = progress.filter((event) => event.type === 'extracting');
+  assert.equal(extractions.length, prepared.batchCount);
+  assert.deepEqual(
+    extractions.map((event) => event.current),
+    Array.from({ length: prepared.batchCount }, (_, index) => index + 1),
+  );
+  assert.deepEqual(
+    progress.slice(-2).map((event) => event.type),
+    ['synthesizing', 'archiving'],
+  );
   const failingModel = providerWithResponses((body) => {
     const prompt = body.messages.find((message) => message.role === 'user')?.content ?? '';
     return prompt.includes('资料批次')

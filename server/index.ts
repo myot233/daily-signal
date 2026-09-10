@@ -2,10 +2,15 @@ import { createServer } from 'node:http';
 import { createApp } from './http/app';
 import { mountFrontend } from './http/frontend';
 import { sqlite } from './infrastructure/database/client';
+import {
+  initializeDigestGenerationQueue,
+  stopDigestGenerationQueue,
+} from './modules/ai/generation-queue';
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw new Error('PORT 必须是 1–65535 的整数。');
+initializeDigestGenerationQueue();
 const app = createApp();
 const server = createServer(app);
 const closeFrontend = await mountFrontend(app, server);
@@ -27,6 +32,7 @@ async function shutdown() {
   const deadline = setTimeout(() => process.exit(1), 5_000);
   deadline.unref();
   await closeFrontend?.();
+  await stopDigestGenerationQueue();
   server.close(() => {
     sqlite.close();
     process.exit(0);

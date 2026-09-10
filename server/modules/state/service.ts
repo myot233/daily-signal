@@ -1,5 +1,6 @@
 import type { AppState } from '../../../shared/types';
 import { listDigests } from '../ai/repository';
+import { getActiveDigestGenerationSessionId } from '../ai/generation-repository';
 import { listArticles, listFeeds } from '../feeds/repository';
 import { listProviders } from '../providers/repository';
 import { defaultTemplate } from '../settings/defaults';
@@ -16,5 +17,6 @@ export function getState(): AppState {
     defaultTemplate,
     providers: listProviders(),
     defaultProviderModelId,
+    activeDigestGenerationSessionId: getActiveDigestGenerationSessionId(),
   };
 }
