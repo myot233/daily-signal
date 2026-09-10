@@ -1,7 +1,7 @@
 import { ui } from "./lib/ui-styles"
 import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { atom, useAtom, useStore } from 'jotai'
+import { atom, useStore } from 'jotai'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { Archive, ArrowUpRight, BookOpen, CheckCircle2, CircleAlert, FilePenLine, LoaderCircle, Menu, Newspaper, Rss, Settings2, ShieldCheck, X } from 'lucide-react'
 import { Button } from './components/ui/button'
@@ -15,7 +15,6 @@ import { errorMessage, formatDate, localDate, rpc } from './lib/client'
 import type { Notice, Perform, View } from './lib/client'
 import type { AppState, SettingsUpdate } from '../shared/types'
 import { appStateQueryOptions } from './lib/query'
-import { apiKeyAtom } from './lib/state'
 
 const navigation = [
   { id: 'today', path: '/', label: '今日简报', icon: Newspaper },
@@ -23,7 +22,7 @@ const navigation = [
   { id: 'articles', path: '/articles', label: '文章流', icon: BookOpen },
   { id: 'archive', path: '/archive', label: '日报归档', icon: Archive },
   { id: 'template', path: '/template', label: '日报模板', icon: FilePenLine },
-  { id: 'settings', path: '/settings', label: 'AI 设置', icon: Settings2 },
+  { id: 'settings', path: '/settings', label: '模型与服务商', icon: Settings2 },
 ] satisfies { id: View; path: string; label: string; icon: typeof Newspaper }[]
 
 // These transient atoms coordinate events without putting request closures or
@@ -71,7 +70,6 @@ export default function App() {
     setMobileMenu({ pathname, open: false })
   }
   const mobileOpen = mobileMenu.pathname === pathname && mobileMenu.open
-  const [apiKey, setApiKey] = useAtom(apiKeyAtom)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const runAction = useActionMutation()
@@ -160,7 +158,8 @@ export default function App() {
         <Route path="/articles" element={props && <ArticlesView {...props} navigate={navigate} />} />
         <Route path="/archive" element={props && <ArchiveView {...props} navigate={navigate} />} />
         <Route path="/template" element={props && <TemplateView {...props} saveSettings={saveSettings} />} />
-        <Route path="/settings" element={props && <SettingsView {...props} saveSettings={saveSettings} apiKey={apiKey} setApiKey={setApiKey} />} />
+        <Route path="/settings" element={props && <SettingsView {...props} />} />
+        <Route path="/settings/providers/:providerId" element={props && <SettingsView {...props} />} />
         <Route path="*" element={<section className={ui.emptyState}><div className={ui.eyebrow}>404 · 页面未找到</div><h1>这页读本，还不存在。</h1><p>请检查地址，或回到今日简报继续阅读。</p><Link className="text-primary inline-flex items-center gap-1.25 no-underline bg-transparent border-0 text-[12px] hover:underline hover:underline-offset-3" to="/">返回今日简报</Link></section>} />
       </Routes>
       <footer className="mt-14 border-t border-t-border pt-5 flex flex-wrap justify-between gap-3 text-[#928d81] text-[10px] tracking-[.3px] max-[640px]:text-[9px] max-[640px]:mt-9.25"><span>Daily Signal · 把信息留给机器，把思考留给你。</span><span>本地优先 / 自带密钥</span></footer>

@@ -1,15 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import { APICallError, generateText } from 'ai';
 import type { LanguageModel } from 'ai';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import type { SharedV4ProviderOptions as AiProviderOptions } from '@ai-sdk/provider';
 import { connectionSchema, digestInputSchema } from '../shared/types';
 import type { Article, ConnectionInput, Digest, DigestInput, Settings } from '../shared/types';
 import { db, getApiKey, getSettings, listArticles } from './db';
 import { digests } from './schema';
 import { HttpError } from './errors';
 import { fetchPublicText, normalizePublicUrl, PublicFetchError } from './network';
+import { createRuntimeModel } from './providers/adapters';
+import { getProvider, getProviderCredential, recordProviderChecks, resolveProviderSnapshot } from './providers/repository';
 
 interface AiOptions { signal?: AbortSignal; model?: LanguageModel; transport?: typeof fetchPublicText }
+
+class ProviderStageError extends HttpError {
+  constructor(status: number, message: string, public readonly failure: 'endpoint' | 'authentication' | 'quota' | 'model' | 'unknown') {
+    super(status, message);
+  }
+}
 
 export function resolveApiKey(baseUrl: string, override?: string): string {
   if (override) return override;
@@ -27,55 +35,41 @@ const editorialRules = `你是一位谨慎的技术日报编辑，用中文写�
 输出纯 Markdown，不用外层代码围栏、不输出 HTML或图片、不附来源索引（系统会自动附完整索引）。`;
 
 export function configuredModel(settings: Pick<Settings, 'baseUrl' | 'model' | 'deepseekThinking'>, apiKey: string, transport: typeof fetchPublicText = fetchPublicText): LanguageModel {
-  const baseUrl = normalizePublicUrl(settings.baseUrl);
-  const origin = new URL(baseUrl).origin;
-  const provider = createOpenAICompatible({
-    name: 'daily-signal', baseURL: baseUrl.replace(/\/+$/, ''), apiKey,
-    transformRequestBody: new URL(baseUrl).hostname === 'api.deepseek.com'
-      ? body => ({ ...body, thinking: { type: settings.deepseekThinking } })
-      : undefined,
-    fetch: async (input, init) => {
-      const request = new Request(input, init);
-      const target = new URL(request.url);
-      if (request.method !== 'POST' || target.protocol !== 'https:' || target.origin !== origin || !request.headers.get('content-type')?.includes('application/json')) {
-        throw new HttpError(400, 'AI 请求必须发送到所配置的 HTTPS 服务。');
-      }
-      const response = await transport(request.url, {
-        method: 'POST', headers: Object.fromEntries(request.headers), body: await request.text(),
-        signal: request.signal, timeoutMs: 120_000, maxBytes: 2 * 1024 * 1024,
-      });
-      return new Response(response.text, { status: response.status, headers: { 'Content-Type': 'application/json' } });
-    },
-  });
-  return provider.chatModel(settings.model);
+  const baseUrl = normalizePublicUrl(settings.baseUrl).replace(/\/+$/, '');
+  return createRuntimeModel({
+    protocol: 'openai-chat-completions', presetId: new URL(baseUrl).hostname === 'api.deepseek.com' ? 'deepseek' : 'custom',
+    baseUrl, modelId: settings.model, apiKey,
+    options: { timeoutMs: 120_000, maxOutputTokens: 6_000, deepseekThinking: settings.deepseekThinking },
+  }, transport).model;
 }
 
-async function complete(model: LanguageModel, instructions: string, prompt: string, maxOutputTokens: number, signal: AbortSignal, stage: string): Promise<string> {
+async function complete(model: LanguageModel, instructions: string, prompt: string, maxOutputTokens: number, signal: AbortSignal, stage: string, providerOptions?: AiProviderOptions): Promise<string> {
   try {
     signal.throwIfAborted();
-    const result = await generateText({ model, instructions, prompt, maxOutputTokens, maxRetries: 0, abortSignal: signal });
+    const result = await generateText({ model, instructions, prompt, maxOutputTokens, maxRetries: 0, abortSignal: signal, providerOptions });
     if (result.finishReason !== 'stop') {
       const usage = result.usage.outputTokens === undefined ? '' : `，已使用 ${result.usage.outputTokens} 输出 tokens`;
-      throw new HttpError(502, `${stage}未完成（finishReason=${result.finishReason}${usage}，上限 ${maxOutputTokens}）。日报未保存；推理模型可能需要更大的输出预算。`);
+      throw new ProviderStageError(502, `${stage}未完成（finishReason=${result.finishReason}${usage}，上限 ${maxOutputTokens}）。日报未保存；推理模型可能需要更大的输出预算。`, 'model');
     }
     const text = result.text.trim();
-    if (!text) throw new HttpError(502, `${stage}返回空内容，日报未保存。`);
+    if (!text) throw new ProviderStageError(502, `${stage}返回空内容，日报未保存。`, 'model');
     signal.throwIfAborted();
     return text;
   } catch (error) {
-    if (signal.aborted) throw new HttpError(504, '生成超时或已取消，未保存新的日报。');
+    if (signal.aborted) throw new ProviderStageError(504, '生成超时或已取消，未保存新的日报。', 'endpoint');
     if (error instanceof HttpError) throw error;
-    if (error instanceof PublicFetchError) throw new HttpError(error.kind === 'timeout' || error.kind === 'cancelled' ? 504 : 502, error.message);
+    if (error instanceof PublicFetchError) throw new ProviderStageError(error.kind === 'timeout' || error.kind === 'cancelled' ? 504 : 502, error.message, 'endpoint');
     if (APICallError.isInstance(error)) {
       const status = error.statusCode;
       const messages: Record<number, string> = {
         401: 'API Key 无效，请检查密钥。', 403: '模型访问被拒绝，请检查 Key 权限。',
         404: 'API 地址或模型不存在，请检查配置。', 429: '模型服务限额或配额不足，请稍后重试。',
       };
-      throw new HttpError(502, status && messages[status] ? messages[status] : `模型服务请求失败${status ? `（HTTP ${status}）` : ''}，请检查服务配置。`);
+      const failure = status === undefined ? 'unknown' : status === 401 || status === 403 ? 'authentication' : status === 429 ? 'quota' : status === 404 ? 'endpoint' : 'model';
+      throw new ProviderStageError(502, status && messages[status] ? messages[status] : `模型服务请求失败${status ? `（HTTP ${status}）` : ''}，请检查服务配置。`, failure);
     }
     // No raw message/cause is exposed: provider errors may include credentials.
-    throw new HttpError(502, '模型连接或响应解析失败，请检查网络、模型名称和兼容接口。');
+    throw new ProviderStageError(502, '模型连接或响应解析失败，请检查网络、模型名称和兼容接口。', 'unknown');
   }
 }
 
@@ -90,8 +84,8 @@ export async function testConnection(rawInput: ConnectionInput, options: AiOptio
 
 export async function generateDigest(rawInput: DigestInput, options: AiOptions = {}): Promise<Digest> {
   const input = digestInputSchema.parse(rawInput);
-  const settings = getSettings();
-  const apiKey = resolveApiKey(settings.baseUrl, input.apiKey);
+  // Resolve and freeze every provider/model/template value before any model call.
+  const snapshot = resolveProviderSnapshot(input.providerModelId, input.apiKey);
   const rows = listArticles(input.startAt, input.endAt);
   const byUrl = new Map<string, Article>();
   for (const article of rows) {
@@ -120,17 +114,25 @@ export async function generateDigest(rawInput: DigestInput, options: AiOptions =
   if (current.length) batches.push(`[${current.join(',')}]`);
   const timeout = AbortSignal.timeout(10 * 60_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  const model = options.model ?? configuredModel(settings, apiKey, options.transport);
-  const thinkingEnabled = new URL(settings.baseUrl).hostname === 'api.deepseek.com' && settings.deepseekThinking === 'enabled';
+  const runtime = options.model ? { model: options.model, options: snapshot.provider.options, providerOptions: undefined, requestMaxOutputTokens: (budget: number) => budget }
+    : createRuntimeModel({
+      protocol: snapshot.provider.protocol, presetId: snapshot.provider.presetId, baseUrl: snapshot.provider.baseUrl,
+      modelId: snapshot.model.modelId, apiKey: snapshot.apiKey, options: snapshot.provider.options,
+    }, options.transport);
+  const thinkingEnabled = snapshot.provider.options.deepseekThinking === 'enabled'
+    || snapshot.provider.options.anthropicThinkingBudget !== undefined
+    || (snapshot.provider.options.geminiThinkingBudget !== undefined && snapshot.provider.options.geminiThinkingBudget > 0)
+    || (snapshot.provider.options.reasoningEffort !== undefined && snapshot.provider.options.reasoningEffort !== 'none');
   let material = batches[0]!;
   if (batches.length > 1) {
     const extracts: string[] = [];
     for (let index = 0; index < batches.length; index++) {
-      extracts.push(await complete(model, `${editorialRules}\n这是资料提取阶段：保留本批重要事实、明确版本、影响分析及各自原始来源 ID/URL；区分旧闻。简洁输出，以便最后统一编辑。`, `日报日期：${input.date}。资料批次 ${index + 1}/${batches.length}：\n${batches[index]}`, thinkingEnabled ? 16_384 : 2_000, signal, `资料提取 ${index + 1}/${batches.length}`));
+      const totalBudget = thinkingEnabled ? runtime.options.maxOutputTokens : Math.min(runtime.options.maxOutputTokens, 2_000);
+      extracts.push(await complete(runtime.model, `${editorialRules}\n这是资料提取阶段：保留本批重要事实、明确版本、影响分析及各自原始来源 ID/URL；区分旧闻。简洁输出，以便最后统一编辑。`, `日报日期：${input.date}。资料批次 ${index + 1}/${batches.length}：\n${batches[index]}`, runtime.requestMaxOutputTokens(totalBudget), signal, `资料提取 ${index + 1}/${batches.length}`, runtime.providerOptions));
     }
     material = JSON.stringify({ extracts });
   }
-  const text = await complete(model, `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${settings.template}`, `日报日期：${input.date}；时间范围 [${input.startAt}, ${input.endAt})；参考文章 ${sources.length} 篇。\n资料：\n${material}`, thinkingEnabled ? 16_384 : 6_000, signal, '日报合成');
+  const text = await complete(runtime.model, `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${snapshot.template}`, `日报日期：${input.date}；时间范围 [${input.startAt}, ${input.endAt})；参考文章 ${sources.length} 篇。\n资料：\n${material}`, runtime.requestMaxOutputTokens(runtime.options.maxOutputTokens), signal, '日报合成', runtime.providerOptions);
   const index = sources.map((source, position) => {
     const title = source.title.replace(/([\\`*_{}[\]()<>#!|])/g, '\\$1').replace(/[\r\n]+/g, ' ');
     const url = source.url.replace(/[()<>'"\\]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
@@ -139,9 +141,54 @@ export async function generateDigest(rawInput: DigestInput, options: AiOptions =
   const digest: Digest = {
     id: randomUUID(), date: input.date, title: `${input.date} 技术日报`,
     markdown: `${text}\n\n---\n\n## 来源索引\n\n${index}\n\n> 基于订阅内容与摘要，由 AI 辅助整理，请以原文为准。`,
-    createdAt: new Date().toISOString(), articleCount: sources.length, model: settings.model, sources,
+    createdAt: new Date().toISOString(), articleCount: sources.length, model: snapshot.model.modelId, sources,
+    providerId: snapshot.provider.id, providerName: snapshot.provider.name, providerProtocol: snapshot.provider.protocol,
+    providerModelId: snapshot.model.id, providerOptions: snapshot.provider.options,
   };
   signal.throwIfAborted();
   db.insert(digests).values(digest).run();
   return digest;
+}
+
+export async function testSavedProviderConnection(providerId: string, modelId: string, options: Pick<AiOptions, 'signal' | 'transport'> = {}) {
+  const started = Date.now();
+  const provider = getProvider(providerId);
+  const apiKey = getProviderCredential(providerId);
+  if (!apiKey) {
+    return { checks: recordProviderChecks(providerId, modelId, provider.revision, [
+      { stage: 'endpoint', status: 'skipped', latencyMs: 0, safeError: null },
+      { stage: 'authentication', status: 'failed', latencyMs: 0, safeError: '尚未保存 API Key。' },
+      { stage: 'model', status: 'skipped', latencyMs: 0, safeError: null },
+    ]) };
+  }
+  const timeout = AbortSignal.timeout(provider.options.timeoutMs);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+  try {
+    const runtime = createRuntimeModel({
+      protocol: provider.protocol, presetId: provider.presetId, baseUrl: provider.baseUrl,
+      modelId, apiKey, options: provider.options,
+    }, options.transport);
+    const thinkingConfigured = (provider.protocol === 'anthropic-messages' && runtime.options.anthropicThinkingBudget !== undefined)
+      || (provider.protocol === 'gemini-generative-language' && (runtime.options.geminiThinkingBudget ?? 0) > 0)
+      || (provider.protocol === 'openai-chat-completions' && provider.presetId === 'deepseek' && runtime.options.deepseekThinking === 'enabled')
+      || (provider.protocol.startsWith('openai-') && runtime.options.reasoningEffort !== undefined && runtime.options.reasoningEffort !== 'none');
+    const testBudget = thinkingConfigured
+      ? runtime.options.maxOutputTokens : Math.max(32, Math.min(runtime.options.maxOutputTokens, 128));
+    await complete(runtime.model, 'Reply briefly.', 'Reply with OK.', runtime.requestMaxOutputTokens(testBudget), signal, '连接测试', runtime.providerOptions);
+    const latencyMs = Date.now() - started;
+    return { checks: recordProviderChecks(providerId, modelId, provider.revision, [
+      { stage: 'endpoint', status: 'passed', latencyMs, safeError: null },
+      { stage: 'authentication', status: 'passed', latencyMs, safeError: null },
+      { stage: 'model', status: 'passed', latencyMs, safeError: null },
+    ]) };
+  } catch (error) {
+    const latencyMs = Date.now() - started;
+    const failure = error instanceof ProviderStageError ? error.failure : 'model';
+    const message = error instanceof HttpError ? error.message : '模型连接或响应解析失败。';
+    return { checks: recordProviderChecks(providerId, modelId, provider.revision, [
+      { stage: 'endpoint', status: failure === 'endpoint' ? 'failed' : failure === 'unknown' ? 'skipped' : 'passed', latencyMs, safeError: failure === 'endpoint' ? message : null },
+      { stage: 'authentication', status: failure === 'authentication' ? 'failed' : 'skipped', latencyMs, safeError: failure === 'authentication' ? message : null },
+      { stage: 'model', status: failure === 'model' || failure === 'quota' || failure === 'unknown' ? 'failed' : 'skipped', latencyMs, safeError: failure === 'model' || failure === 'quota' || failure === 'unknown' ? message : null },
+    ]) };
+  }
 }

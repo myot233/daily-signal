@@ -76,6 +76,7 @@ export interface FetchOptions {
   timeoutMs?: number;
   maxBytes?: number;
   signal?: AbortSignal;
+  redirect?: 'follow' | 'error';
 }
 
 function safeFailure(error: unknown): PublicFetchError {
@@ -119,6 +120,7 @@ return async function fetchPublicText(value: string, options: FetchOptions = {})
       if (response.status >= 300 && response.status < 400) {
         await response.body?.cancel();
         if (method === 'POST') throw new PublicFetchError('AI 服务返回重定向；为保护 API Key，请填写最终 API 地址。');
+        if (options.redirect === 'error') throw new PublicFetchError('此请求不允许服务器重定向，请填写最终 API 地址。');
         if (redirects >= 4) throw new PublicFetchError('服务器重定向超过 4 次。');
         const location = response.headers.get('location');
         if (!location) throw new PublicFetchError('服务器重定向缺少目标地址。');
@@ -128,7 +130,9 @@ return async function fetchPublicText(value: string, options: FetchOptions = {})
         }
         next = normalizePublicUrl(next);
         if (new URL(next).origin !== new URL(current).origin) {
-          headers = Object.fromEntries(Object.entries(headers).filter(([key]) => !/^(?:authorization|cookie)$/i.test(key)));
+          headers = Object.fromEntries(Object.entries(headers).filter(([key]) =>
+            !/^(?:authorization|proxy-authorization|cookie|x-api-key|x-goog-api-key)$/i.test(key)
+            && !/^x-[\w-]*(?:key|token|secret)$/i.test(key)));
         }
         current = next;
         continue;

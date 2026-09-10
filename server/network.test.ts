@@ -106,9 +106,29 @@ test('cross-origin GET redirects remove credentials', async () => {
   let received: Record<string, string> = {};
   agent.get('https://other.example.com').intercept({ path: '/', headers: headers => { received = headers; return true; } }).reply(200, 'safe');
   try {
-    await createPublicFetcher(agent)('https://fixture.example.com/', { headers: { authorization: 'Bearer sentinel-key', cookie: 'session=sentinel-key' } });
+    await createPublicFetcher(agent)('https://fixture.example.com/', { headers: {
+      authorization: 'Bearer sentinel-key', cookie: 'session=sentinel-key',
+      'x-api-key': 'anthropic-sentinel', 'x-goog-api-key': 'gemini-sentinel', 'x-custom-token': 'custom-sentinel',
+    } });
     assert.equal(received.authorization, undefined);
     assert.equal(received.cookie, undefined);
+    assert.equal(received['x-api-key'], undefined);
+    assert.equal(received['x-goog-api-key'], undefined);
+    assert.equal(received['x-custom-token'], undefined);
+  } finally { await agent.close(); }
+});
+
+test('credentialed GET callers can forbid redirects before a second origin is contacted', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  agent.get('https://fixture.example.com').intercept({ path: '/models' }).reply(302, '', { headers: { location: 'https://other.example.com/models' } });
+  let contacted = false;
+  agent.get('https://other.example.com').intercept({ path: '/models' }).reply(() => { contacted = true; return { statusCode: 200, data: '{}' }; });
+  try {
+    await assert.rejects(createPublicFetcher(agent)('https://fixture.example.com/models', {
+      headers: { 'x-goog-api-key': 'gemini-sentinel' }, redirect: 'error',
+    }), error => error instanceof PublicFetchError && error.message.includes('不允许服务器重定向'));
+    assert.equal(contacted, false);
   } finally { await agent.close(); }
 });
 
