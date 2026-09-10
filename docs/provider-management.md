@@ -90,14 +90,35 @@ flowchart LR
 ```text
 shared/providers/catalog.ts       品牌、预设、协议与非敏感默认值
 shared/providers/schemas.ts       输入、公共响应、模型能力、测试结果
-server/providers/repository.ts    连接与模型持久化、默认选择事务
-server/providers/repository.ts    同时封装凭据存取与更新语义
-server/providers/adapters.ts      按协议构造模型与映射参数
-server/providers/discovery.ts     模型目录查询与格式归一
-server/providers/transport.ts     基于现有 network.ts 的受控传输
+server/modules/providers/repository.ts  连接、模型、凭据持久化与默认选择事务
+server/modules/providers/adapters.ts    按协议构造模型与映射参数
+server/modules/providers/discovery.ts   模型目录查询与格式归一
+server/modules/providers/transport.ts   基于 infrastructure/network/public-fetch.ts 的受控传输
 src/components/SettingsView.tsx   连接列表、详情、模型列表、添加对话框
 src/components/ProviderIcon.tsx   Lobe 品牌映射与缺失图标回退
 ```
+
+后端按入口、业务模块与基础设施组织，测试与对应实现放在同一目录：
+
+```text
+server/
+  index.ts                         HTTP 启动与退出
+  migrate.ts                       数据库迁移命令入口
+  http/                            Express 应用、本地同源保护、Vite/静态文件托管
+  rpc/                             契约绑定、错误映射、分业务接口与并发互斥
+  core/                            共用业务错误
+  infrastructure/database/         SQLite 连接、schema、迁移与首次启动初始化
+  infrastructure/network/          公开网络校验、DNS/重定向/超时与大小限制
+  modules/feeds/                   RSS/OPML 解析、抓取入库、订阅和文章查询
+  modules/ai/                      连接测试、日报生成与持久化
+  modules/providers/               服务商配置、凭据、模型发现与协议适配
+  modules/settings/                默认模板、设置读取与保存
+  modules/state/                   聚合各模块的公开应用状态
+```
+
+`rpc/router.ts` 只组合接口，不直接操作数据库。数据库客户端仅导出 `db` / `sqlite`；业务查询放在对应模块，`state/service.ts` 负责聚合。RSS/OPML 解析不访问数据库或网络。共享契约仍放在 `shared/`，前端不依赖后端实现。
+
+后端统一使用 Prettier（单引号、100 列、尾逗号），配置位于 `server/.prettierrc.json`。`pnpm format:server` 格式化后端；`pnpm check` 依次检查后端格式、Oxlint、类型及递归发现的后端测试。`pnpm build` 和 `pnpm db:migrate` 的入口命令保持不变。
 
 registry 只提供默认值，升级预设时不覆盖用户保存的 URL、模型或参数。模型 ID 始终是可输入的字符串；静态目录仅提供建议，不能成为拒绝新模型的枚举。
 
