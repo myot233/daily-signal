@@ -67,7 +67,10 @@ test('legacy database migrates URL, model, template, thinking and key exactly on
       sqlite.close();
     `,
     );
-    assert.deepEqual(migrated.state.settings, value);
+    assert.deepEqual(migrated.state.settings, {
+      ...value,
+      autoDigest: { enabled: false, time: '20:00' },
+    });
     assert.equal(migrated.state.providers.length, 1);
     assert.equal(migrated.state.providers[0].protocol, 'openai-chat-completions');
     assert.equal(migrated.state.providers[0].models[0].modelId, value.model);

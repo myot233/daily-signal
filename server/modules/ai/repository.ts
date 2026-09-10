@@ -8,6 +8,10 @@ export function listDigests(): Digest[] {
   return db.select().from(digests).orderBy(desc(digests.createdAt)).all();
 }
 
+export function hasDigestForDate(date: string): boolean {
+  return Boolean(db.select({ id: digests.id }).from(digests).where(eq(digests.date, date)).get());
+}
+
 export function saveDigest(digest: Digest): void {
   db.insert(digests).values(digest).run();
 }

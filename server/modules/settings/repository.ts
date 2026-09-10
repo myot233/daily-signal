@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { Settings } from '../../../shared/types';
+import { settingsSchema, type Settings } from '../../../shared/types';
 import { providerOptionsSchema } from '../../../shared/providers/schemas';
 import { db } from '../../infrastructure/database/client';
 import {
@@ -12,6 +12,7 @@ import {
 export function getSettings(): Settings {
   const row = db.select().from(settings).where(eq(settings.id, 1)).get();
   if (!row) throw new Error('模型配置不存在');
+  const value = settingsSchema.parse(row.value);
   const selected = row.defaultProviderModelId
     ? db
         .select({ provider: providers, model: providerModels })
@@ -20,14 +21,16 @@ export function getSettings(): Settings {
         .where(eq(providerModels.id, row.defaultProviderModelId))
         .get()
     : undefined;
-  return selected
-    ? {
-        ...row.value,
-        baseUrl: selected.provider.baseUrl,
-        model: selected.model.modelId,
-        deepseekThinking: providerOptionsSchema.parse(selected.provider.options).deepseekThinking,
-      }
-    : row.value;
+  return settingsSchema.parse(
+    selected
+      ? {
+          ...value,
+          baseUrl: selected.provider.baseUrl,
+          model: selected.model.modelId,
+          deepseekThinking: providerOptionsSchema.parse(selected.provider.options).deepseekThinking,
+        }
+      : value,
+  );
 }
 
 export function getApiKey(): string | null {
