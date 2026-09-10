@@ -1,3 +1,4 @@
+import { maxBy } from 'es-toolkit/array'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -60,13 +61,15 @@ export function TodayView({
   startGeneration,
   navigate,
   refresh,
+  initialDate = localDate(),
 }: ViewProps & {
   generation: DigestGenerationState | null
   startGeneration: StartDigestGeneration
   navigate: (view: View) => void
   refresh: () => void
+  initialDate?: string
 }) {
-  const [date, setDate] = useState(localDate)
+  const [date, setDate] = useState(initialDate)
   const [now, setNow] = useState(Date.now)
   const [providerModelId, setProviderModelId] = useState(state.defaultProviderModelId ?? '')
 
@@ -79,7 +82,10 @@ export function TodayView({
     ? provider.models.filter(model => model.enabled).map(model => ({ provider, model }))
     : [])
   const activeProviderModelId = modelChoices.some(choice => choice.model.id === providerModelId) ? providerModelId : ''
-  const report = state.digests.filter(item => item.date === date).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  const report = maxBy(
+    state.digests.filter(item => item.date === date),
+    item => Date.parse(item.createdAt),
+  )
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const bounds = date ? dayBounds(date) : null
   const visibleArticles = bounds ? state.articles.filter(article => article.publishedAt >= bounds.startAt && article.publishedAt < bounds.endAt) : []
@@ -88,6 +94,8 @@ export function TodayView({
   const definitelyEmpty = state.articles.length < 500 && visibleArticles.length === 0
   const selectedModel = modelChoices.find(choice => choice.model.id === activeProviderModelId)
   const providerHost = selectedModel ? new URL(selectedModel.provider.baseUrl).hostname : null
+  const selectedModelName = selectedModel?.model.displayName || selectedModel?.model.modelId || '尚未选择模型'
+  const selectedModelContext = selectedModel ? `${selectedModel.provider.name} · ${protocolLabels[selectedModel.provider.protocol]}` : '前往模型与服务商配置'
   const generating = busy === '生成日报'
   const generationEvents = generation?.events ?? []
   const latestGenerationEvent = generationEvents.at(-1)
@@ -136,146 +144,150 @@ export function TodayView({
       </div>
     </div>
 
-    <Card className="mb-6.25 gap-0 overflow-hidden border-[#d8d1c3] py-0 shadow-[0_10px_30px_#4b37120a]" aria-busy={generating}>
-      <form onSubmit={generate}>
-        <div className="flex items-start justify-between gap-4 border-b border-border bg-[#fbf8f1] px-6.25 py-5.5 max-[640px]:px-4.5 max-[640px]:py-4.5">
-          <div className="flex min-w-0 items-start gap-3.5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_5px_14px_#a8482d26]">
-              <Sparkles aria-hidden="true" size={19} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="font-serif text-[21px] font-semibold leading-tight max-[640px]:text-[19px]">AI 日报生成器</h2>
-              <p className="mt-1.5 text-[11px] leading-[1.7] text-muted-foreground">输入上下文固定后，模型会阅读、整理并保存一份新版本。</p>
+    <div className="grid items-start gap-6.25 min-[1280px]:grid-cols-[minmax(0,1fr)_21.5rem]">
+      <aside className="min-w-0 min-[1280px]:sticky min-[1280px]:top-5 min-[1280px]:col-start-2 min-[1280px]:row-start-1" aria-label="日报生成选项">
+        <Card className="gap-0 overflow-hidden border-[#d8d1c3] py-0 shadow-[0_10px_30px_#4b37120a]" aria-busy={generating}>
+          <form onSubmit={generate}>
+            <div className="flex items-start justify-between gap-3 border-b border-border bg-[#fbf8f1] px-5 py-4.5 max-[640px]:px-4.5">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_5px_14px_#a8482d26]">
+                  <Sparkles aria-hidden="true" size={17} />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="font-serif text-[19px] font-semibold leading-tight">AI 日报生成器</h2>
+                  <p className="mt-1 text-[10px] leading-[1.6] text-muted-foreground">设置本次生成使用的上下文。</p>
+                </div>
+              </div>
+              <Badge className="shrink-0" variant={generating ? 'outline' : 'secondary'}>
+                {generating ? <LoaderCircle aria-hidden="true" className="animate-spin" size={12} /> : <span aria-hidden="true" className="size-1.5 rounded-full bg-[#6f8357]" />}
+                {generating ? '生成中' : '等待指令'}
+              </Badge>
             </div>
+
+            <div className="grid gap-4.5 px-5 py-5 max-[640px]:px-4.5 max-[640px]:py-4.5">
+              <div className="grid gap-4 min-[700px]:grid-cols-2 min-[1280px]:grid-cols-1">
+                <div className="grid min-w-0 gap-2 [&_[data-slot=label]]:text-[12px]">
+                  <Label htmlFor="digest-date">日报日期</Label>
+                  <Input id="digest-date" type="date" required value={date} onChange={event => setDate(event.target.value)} disabled={!!busy} aria-describedby="digest-date-help" />
+                  <span id="digest-date-help" className="text-[10px] text-muted-foreground">按本地时区 {timezone} 读取当天缓存。</span>
+                </div>
+                <div className="grid min-w-0 gap-2 [&_[data-slot=label]]:text-[12px]">
+                  <Label htmlFor="digest-model">模型</Label>
+                  <select id="digest-model" className="h-10 min-w-0 rounded-md border border-input bg-paper px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" value={activeProviderModelId} disabled={!!busy} onChange={event => setProviderModelId(event.target.value)} aria-describedby="digest-model-help">
+                    <option value="">请选择连接与模型</option>
+                    {state.providers.filter(item => item.enabled).map(item => <optgroup key={item.id} label={item.name}>
+                      {item.models.filter(model => model.enabled).map(model => <option key={model.id} value={model.id}>{model.displayName || model.modelId}</option>)}
+                    </optgroup>)}
+                  </select>
+                  <span id="digest-model-help" className="text-[10px] text-muted-foreground">生成开始时冻结选择。</span>
+                </div>
+              </div>
+
+              <div className="grid gap-2.5 min-[900px]:grid-cols-3 min-[1280px]:grid-cols-1" aria-label="本次生成上下文">
+                <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
+                  <Database aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />
+                  <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="block text-[11px] font-semibold text-foreground">{visibleArticles.length} 篇缓存文章</strong>不会自动刷新来源</span>
+                </div>
+                <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
+                  <Layers3 aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />
+                  <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="block text-[11px] font-semibold text-foreground">{templateLabel}</strong>控制结构与写作要求</span>
+                </div>
+                <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
+                  {selectedModel ? <ProviderIcon presetId={selectedModel.provider.presetId} size={16} /> : <Settings2 aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />}
+                  <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="block truncate text-[11px] font-semibold text-foreground" title={selectedModelName}>{selectedModelName}</strong><span className="block truncate" title={selectedModelContext}>{selectedModelContext}</span></span>
+                </div>
+              </div>
+
+              <Task key={generation?.sessionId ?? (generating ? 'running' : 'idle')} defaultOpen={generating || Boolean(generationEvents.length)} className="rounded-lg border border-[#e0d7c8] bg-paper px-4.25">
+                <div aria-live="polite" aria-atomic="true">
+                  <TaskTrigger title={
+                    latestGenerationEvent
+                      ? generationEventLabel(latestGenerationEvent)
+                      : generating
+                        ? '正在连接本地生成队列'
+                        : '查看生成流程与数据边界'
+                  } />
+                </div>
+                <TaskContent className="pb-4">
+                  {generation ? generationEvents.length ? generationEvents.map((item, index) => {
+                    const current = generating && index === generationEvents.length - 1
+                    const failed = item.type === 'failed'
+                    return <TaskItem key={item.id} className={`flex min-h-7 items-start gap-2.5 text-[11px] ${failed ? 'text-destructive' : ''}`}>
+                      {current
+                        ? <LoaderCircle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 animate-spin text-primary" />
+                        : failed
+                          ? <CircleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+                          : <Check aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-[#6f8357]" />}
+                      <span>{generationEventLabel(item)}</span>
+                    </TaskItem>
+                  }) : <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><LoaderCircle aria-hidden="true" className="size-3.5 shrink-0 animate-spin text-primary" />等待本地队列返回首个事件</TaskItem> : <>
+                    <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><Database aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />读取 {date ? formatDate(date) : '所选日期'} 的缓存文章</TaskItem>
+                    <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><Sparkles aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />按当前模板提炼主题、事实与脉络</TaskItem>
+                    <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><FileText aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />成功后自动保存新版本和来源快照</TaskItem>
+                  </>}
+                  {generating && <p className="mt-3 flex items-start gap-2 rounded-md bg-[#f4eadf] px-3 py-2.5 text-[10px] leading-[1.7] text-[#795c3e]" role="status"><span className="mt-1 size-1.5 shrink-0 animate-pulse rounded-full bg-primary" />这些状态来自本地 SQLite 事件队列。离开当前页面不会取消后台生成，返回后会从已保存的事件继续显示。</p>}
+                </TaskContent>
+              </Task>
+
+              <p className="quiet-note text-[10px] leading-[1.8] text-muted-foreground wrap-anywhere">文章与 API Key 将发送至 <strong>{providerHost ?? '所选服务商'}</strong>。单日最多 500 篇、30 万字符；超限会在调用前拒绝，失败不会覆盖旧版。</p>
+
+              {selectedModel && !selectedModel.provider.hasCredential && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />所选连接缺少 API Key。请先在 <button type="button" className="font-semibold underline underline-offset-3" onClick={() => navigate('settings')}>模型与服务商</button> 中保存。</p>}
+              {!selectedModel && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />生成前，请选择一个已启用的连接与模型。</p>}
+              {definitelyEmpty && state.feeds.length > 0 && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />所选日期没有可总结的文章。请刷新订阅或选择其他日期。</p>}
+
+              <div className="grid gap-3 border-t border-border pt-4.5">
+                <div className="grid grid-cols-2 gap-2.25 [&_button]:w-full">
+                  <Button type="button" variant="outline" size="lg" disabled={!!busy || !state.feeds.length} onClick={refresh}><RefreshCw aria-hidden="true" className={busy === '刷新订阅' ? 'animate-spin' : ''} />刷新订阅</Button>
+                  <Button type="submit" size="lg" disabled={!canGenerate} className="shadow-[0_5px_14px_#a8482d20]">
+                    {generating ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+                    {generating ? '正在生成' : report ? '重新生成一版' : '生成日报'}
+                  </Button>
+                </div>
+                <button type="button" className="inline-flex min-h-8 items-center justify-center gap-1.5 text-[11px] font-medium text-primary hover:underline hover:underline-offset-3" onClick={() => navigate('settings')}>管理模型连接 <ArrowRight aria-hidden="true" size={13} /></button>
+              </div>
+            </div>
+          </form>
+        </Card>
+
+        {(failed.length > 0 || stale.length > 0) && <div className="warning mt-4 rounded-[7px] border border-[#e8d8b2] bg-[#f7efdc] px-4 py-3.5 text-[11px] leading-[1.8] text-[#826426] wrap-anywhere [&_details]:mt-1.5 [&_ul]:mx-0 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5">
+          <p>{failed.length > 0 ? `${failed.length} 个来源最近获取失败，现有缓存仍可用于生成，信息可能不完整。` : '部分来源超过 24 小时未更新，建议先刷新再生成。'}</p>
+          <details><summary>查看来源状态</summary><ul>{state.feeds.filter(feed => failed.includes(feed) || stale.includes(feed)).map(feed => <li key={feed.id}><strong>{feed.title}</strong>：{feed.error || '缓存可能已过时'}；{feed.lastFetchedAt ? `上次成功 ${formatDate(feed.lastFetchedAt, true)}` : '尚无成功获取记录'}</li>)}</ul></details>
+        </div>}
+      </aside>
+
+      <section className="min-w-0 min-[1280px]:col-start-1 min-[1280px]:row-start-1" aria-labelledby="ai-output-title">
+        <div className="mb-3.5 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-7.5 shrink-0 place-items-center rounded-lg bg-[#efe3d8] text-primary"><Sparkles aria-hidden="true" size={14} /></span>
+            <div><div className="text-[9px] font-semibold tracking-[1.6px] text-primary">DOCUMENT PREVIEW</div><h2 id="ai-output-title" className="font-serif text-[20px] font-semibold">{report ? '最新生成结果' : '等待生成'}</h2></div>
           </div>
-          <Badge className="shrink-0" variant={generating ? 'outline' : 'secondary'}>
-            {generating ? <LoaderCircle aria-hidden="true" className="animate-spin" size={12} /> : <span aria-hidden="true" className="size-1.5 rounded-full bg-[#6f8357]" />}
-            {generating ? '生成中' : '等待指令'}
-          </Badge>
+          {report && <Badge variant="secondary">来源可追溯</Badge>}
         </div>
 
-        <div className="grid gap-5.5 px-6.25 py-5.5 max-[640px]:gap-4.5 max-[640px]:px-4.5 max-[640px]:py-4.5">
-          <div className="grid grid-cols-2 gap-4 max-[700px]:grid-cols-1">
-            <div className="grid min-w-0 gap-2 [&_[data-slot=label]]:text-[12px]">
-              <Label htmlFor="digest-date">日报日期</Label>
-              <Input id="digest-date" type="date" required value={date} onChange={event => setDate(event.target.value)} disabled={!!busy} aria-describedby="digest-date-help" />
-              <span id="digest-date-help" className="text-[10px] text-muted-foreground">按本地时区 {timezone} 读取当天缓存。</span>
-            </div>
-            <div className="grid min-w-0 gap-2 [&_[data-slot=label]]:text-[12px]">
-              <Label htmlFor="digest-model">模型</Label>
-              <select id="digest-model" className="h-10 min-w-0 rounded-md border border-input bg-paper px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" value={activeProviderModelId} disabled={!!busy} onChange={event => setProviderModelId(event.target.value)} aria-describedby="digest-model-help">
-                <option value="">请选择连接与模型</option>
-                {state.providers.filter(item => item.enabled).map(item => <optgroup key={item.id} label={item.name}>
-                  {item.models.filter(model => model.enabled).map(model => <option key={model.id} value={model.id}>{model.displayName || model.modelId}</option>)}
-                </optgroup>)}
-              </select>
-              <span id="digest-model-help" className="text-[10px] text-muted-foreground">本次选择会在生成开始时冻结。</span>
-            </div>
+        {report ? <Report digest={report} /> : <div className="relative overflow-hidden rounded-xl border border-[#dcd4c6] bg-paper px-8.75 py-9 text-center shadow-[0_8px_24px_#46371008] max-[800px]:px-5.5 max-[640px]:px-4.5 max-[640px]:py-7">
+          <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-80 -translate-x-1/2 rounded-full bg-[#efe4d7] opacity-55 blur-3xl" aria-hidden="true" />
+          <div className="relative mx-auto mb-4.5 grid size-14 place-items-center rounded-2xl border border-[#ded0bd] bg-[#faf5ec] text-primary shadow-[0_6px_18px_#59341410]">
+            <Sparkles aria-hidden="true" size={24} />
+            <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-paper bg-[#6f8357]" />
           </div>
-
-          <div className="grid grid-cols-3 gap-2.5 max-[800px]:grid-cols-1" aria-label="本次生成上下文">
-            <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
-              <Database aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />
-              <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="block text-[11px] font-semibold text-foreground">{visibleArticles.length} 篇缓存文章</strong>不会自动刷新来源</span>
-            </div>
-            <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
-              <Layers3 aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />
-              <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="block text-[11px] font-semibold text-foreground">{templateLabel}</strong>控制结构与写作要求</span>
-            </div>
-            <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[#e6dfd2] bg-[#f7f3ea] px-3.5 py-3">
-              {selectedModel ? <ProviderIcon presetId={selectedModel.provider.presetId} size={16} /> : <Settings2 aria-hidden="true" className="size-4 shrink-0 text-[#9b8060]" />}
-              <span className="min-w-0 text-[10px] text-muted-foreground"><strong className="wrap-anywhere block text-[11px] font-semibold text-foreground">{selectedModel?.model.displayName || selectedModel?.model.modelId || '尚未选择模型'}</strong>{selectedModel ? `${selectedModel.provider.name} · ${protocolLabels[selectedModel.provider.protocol]}` : '前往模型与服务商配置'}</span>
-            </div>
+          <h3 className="relative font-serif text-[25px] font-medium tracking-[-.5px] max-[640px]:text-[22px]">{state.digests.length ? `${date ? formatDate(date) : '所选日期'}，还没有生成版本。` : '从可信上下文，生成第一份日报。'}</h3>
+          <p className="relative mx-auto mt-3 max-w-145 text-[12px] leading-[1.9] text-muted-foreground max-[640px]:text-[11px]">准备好来源、模型与模板后，生成结果会连同来源快照显示在这里。</p>
+          <div className="relative mt-7 grid grid-cols-3 gap-3 border-t border-border pt-6 max-[800px]:gap-2 max-[640px]:mt-5.5 max-[640px]:grid-cols-1 max-[640px]:pt-5">
+            <button className={ui.onboardingStep} type="button" onClick={() => navigate('feeds')}>
+              <span className={`grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center [&.complete]:bg-[#edf0e4] [&.complete]:text-[#536541] ${state.feeds.length ? 'complete' : ''}`}>{state.feeds.length ? <Check aria-hidden="true" size={17} /> : '01'}</span>
+              <strong>添加可信来源 <ArrowRight aria-hidden="true" size={14} /></strong><span>RSS / Atom 或 OPML</span>
+            </button>
+            <button className={ui.onboardingStep} type="button" onClick={() => navigate('settings')}>
+              <span className={`grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center [&.complete]:bg-[#edf0e4] [&.complete]:text-[#536541] ${state.hasApiKey ? 'complete' : ''}`}>{state.hasApiKey ? <Check aria-hidden="true" size={17} /> : '02'}</span>
+              <strong>连接 AI 模型 <ArrowRight aria-hidden="true" size={14} /></strong><span>密钥只保存在本地</span>
+            </button>
+            <button className={ui.onboardingStep} type="button" onClick={() => navigate('template')}>
+              <span className="grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center">03</span>
+              <strong>定义日报模板 <ArrowRight aria-hidden="true" size={14} /></strong><span>告诉 AI 如何整理</span>
+            </button>
           </div>
-
-          <Task key={generation?.sessionId ?? (generating ? 'running' : 'idle')} defaultOpen={generating || Boolean(generationEvents.length)} className="rounded-lg border border-[#e0d7c8] bg-paper px-4.25">
-            <div aria-live="polite" aria-atomic="true">
-              <TaskTrigger title={
-                latestGenerationEvent
-                  ? generationEventLabel(latestGenerationEvent)
-                  : generating
-                    ? '正在连接本地生成队列'
-                    : '查看生成流程与数据边界'
-              } />
-            </div>
-            <TaskContent className="pb-4">
-              {generation ? generationEvents.length ? generationEvents.map((item, index) => {
-                const current = generating && index === generationEvents.length - 1
-                const failed = item.type === 'failed'
-                return <TaskItem key={item.id} className={`flex min-h-7 items-start gap-2.5 text-[11px] ${failed ? 'text-destructive' : ''}`}>
-                  {current
-                    ? <LoaderCircle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 animate-spin text-primary" />
-                    : failed
-                      ? <CircleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-                      : <Check aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-[#6f8357]" />}
-                  <span>{generationEventLabel(item)}</span>
-                </TaskItem>
-              }) : <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><LoaderCircle aria-hidden="true" className="size-3.5 shrink-0 animate-spin text-primary" />等待本地队列返回首个事件</TaskItem> : <>
-                <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><Database aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />读取 {date ? formatDate(date) : '所选日期'} 的缓存文章</TaskItem>
-                <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><Sparkles aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />按当前模板提炼主题、事实与脉络</TaskItem>
-                <TaskItem className="flex min-h-7 items-center gap-2.5 text-[11px]"><FileText aria-hidden="true" className="size-3.5 shrink-0 text-[#a07c57]" />成功后自动保存新版本和来源快照</TaskItem>
-              </>}
-              {generating && <p className="mt-3 flex items-start gap-2 rounded-md bg-[#f4eadf] px-3 py-2.5 text-[10px] leading-[1.7] text-[#795c3e]" role="status"><span className="mt-1 size-1.5 shrink-0 animate-pulse rounded-full bg-primary" />这些状态来自本地 SQLite 事件队列。离开当前页面不会取消后台生成，返回后会从已保存的事件继续显示。</p>}
-            </TaskContent>
-          </Task>
-
-          <p className="quiet-note text-[11px] leading-[1.9] text-muted-foreground wrap-anywhere max-[640px]:text-[10px]">文章内容与这条连接的 API Key 将发送至 <strong>{providerHost ?? '你选择的服务商'}</strong>。单日去重后最多 500 篇、输入最多 30 万字符；超过限制会在付费调用前拒绝。生成失败不会覆盖旧版。</p>
-
-          {selectedModel && !selectedModel.provider.hasCredential && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />所选连接缺少 API Key。请先在 <button type="button" className="font-semibold underline underline-offset-3" onClick={() => navigate('settings')}>模型与服务商</button> 中保存。</p>}
-          {!selectedModel && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />生成前，请选择一个已启用的连接与模型。</p>}
-          {definitelyEmpty && state.feeds.length > 0 && <p className="flex min-h-11 items-center gap-2 rounded-md border border-[#ead9bb] bg-[#fbf4e5] px-3.5 text-[11px] text-[#7b5c2e]"><CircleAlert aria-hidden="true" className="size-4 shrink-0" />所选日期没有可总结的文章。请刷新订阅或选择其他日期。</p>}
-
-          <div className="flex items-center justify-between gap-3 border-t border-border pt-4.5 max-[640px]:flex-col-reverse max-[640px]:items-stretch">
-            <button type="button" className="inline-flex min-h-11 items-center gap-1.5 self-start text-[11px] font-medium text-primary hover:underline hover:underline-offset-3 max-[640px]:self-center" onClick={() => navigate('settings')}>管理模型连接 <ArrowRight aria-hidden="true" size={13} /></button>
-            <div className="flex gap-2.25 max-[640px]:w-full max-[640px]:[&_button]:flex-1">
-              <Button type="button" variant="outline" size="lg" disabled={!!busy || !state.feeds.length} onClick={refresh}><RefreshCw aria-hidden="true" className={busy === '刷新订阅' ? 'animate-spin' : ''} />刷新订阅</Button>
-              <Button type="submit" size="lg" disabled={!canGenerate} className="shadow-[0_5px_14px_#a8482d20]">
-                {generating ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
-                {generating ? '正在生成' : report ? '重新生成一版' : '生成日报'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </form>
-    </Card>
-
-    {(failed.length > 0 || stale.length > 0) && <div className="warning mb-5.5 rounded-[7px] border border-[#e8d8b2] bg-[#f7efdc] px-4.25 py-3.5 text-[12px] leading-[1.8] text-[#826426] wrap-anywhere [&_details]:mt-1.5 [&_ul]:mx-0 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5">
-      <p>{failed.length > 0 ? `${failed.length} 个来源最近获取失败，现有缓存仍可用于生成，信息可能不完整。` : '部分来源超过 24 小时未更新，建议先刷新再生成。'}</p>
-      <details><summary>查看来源状态</summary><ul>{state.feeds.filter(feed => failed.includes(feed) || stale.includes(feed)).map(feed => <li key={feed.id}><strong>{feed.title}</strong>：{feed.error || '缓存可能已过时'}；{feed.lastFetchedAt ? `上次成功 ${formatDate(feed.lastFetchedAt, true)}` : '尚无成功获取记录'}</li>)}</ul></details>
-    </div>}
-
-    <section aria-labelledby="ai-output-title">
-      <div className="mb-3.5 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-7.5 shrink-0 place-items-center rounded-lg bg-[#efe3d8] text-primary"><Sparkles aria-hidden="true" size={14} /></span>
-          <div><div className="text-[9px] font-semibold tracking-[1.6px] text-primary">AI RESPONSE</div><h2 id="ai-output-title" className="font-serif text-[20px] font-semibold">{report ? '最新生成结果' : '等待生成'}</h2></div>
-        </div>
-        {report && <Badge variant="secondary">来源可追溯</Badge>}
-      </div>
-
-      {report ? <Report digest={report} /> : <div className="relative overflow-hidden rounded-xl border border-[#dcd4c6] bg-paper px-8.75 py-9 text-center shadow-[0_8px_24px_#46371008] max-[800px]:px-5.5 max-[640px]:px-4.5 max-[640px]:py-7">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-80 -translate-x-1/2 rounded-full bg-[#efe4d7] opacity-55 blur-3xl" aria-hidden="true" />
-        <div className="relative mx-auto mb-4.5 grid size-14 place-items-center rounded-2xl border border-[#ded0bd] bg-[#faf5ec] text-primary shadow-[0_6px_18px_#59341410]">
-          <Sparkles aria-hidden="true" size={24} />
-          <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-paper bg-[#6f8357]" />
-        </div>
-        <h3 className="relative font-serif text-[25px] font-medium tracking-[-.5px] max-[640px]:text-[22px]">{state.digests.length ? `${date ? formatDate(date) : '所选日期'}，还没有生成版本。` : '你的第一份 AI 日报，从可信上下文开始。'}</h3>
-        <p className="relative mx-auto mt-3 max-w-145 text-[12px] leading-[1.9] text-muted-foreground max-[640px]:text-[11px]">这里不会展示虚构示例。准备好来源、模型与模板后，生成结果会带着当时的文章快照出现在这里。</p>
-        <div className="relative mt-7 grid grid-cols-3 gap-3 border-t border-border pt-6 max-[800px]:gap-2 max-[640px]:mt-5.5 max-[640px]:grid-cols-1 max-[640px]:pt-5">
-          <button className={ui.onboardingStep} type="button" onClick={() => navigate('feeds')}>
-            <span className={`grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center [&.complete]:bg-[#edf0e4] [&.complete]:text-[#536541] ${state.feeds.length ? 'complete' : ''}`}>{state.feeds.length ? <Check aria-hidden="true" size={17} /> : '01'}</span>
-            <strong>添加可信来源 <ArrowRight aria-hidden="true" size={14} /></strong><span>RSS / Atom 或 OPML</span>
-          </button>
-          <button className={ui.onboardingStep} type="button" onClick={() => navigate('settings')}>
-            <span className={`grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center [&.complete]:bg-[#edf0e4] [&.complete]:text-[#536541] ${state.hasApiKey ? 'complete' : ''}`}>{state.hasApiKey ? <Check aria-hidden="true" size={17} /> : '02'}</span>
-            <strong>连接 AI 模型 <ArrowRight aria-hidden="true" size={14} /></strong><span>密钥只保存在本地</span>
-          </button>
-          <button className={ui.onboardingStep} type="button" onClick={() => navigate('template')}>
-            <span className="grid size-7.5 place-items-center rounded-full bg-[#f3efe4] font-editorial text-[12px] font-normal text-[#685b49] max-[640px]:row-span-2 max-[640px]:self-center">03</span>
-            <strong>定义日报模板 <ArrowRight aria-hidden="true" size={14} /></strong><span>告诉 AI 如何整理</span>
-          </button>
-        </div>
-      </div>}
-    </section>
+        </div>}
+      </section>
+    </div>
   </>
 }
