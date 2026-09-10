@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { groupBy } from 'es-toolkit/array';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { providerCatalog } from '../../../shared/providers/catalog';
 import {
@@ -54,20 +55,20 @@ export function listProviders(): ProviderConnection[] {
     .where(inArray(providerChecks.providerId, ids))
     .orderBy(desc(providerChecks.checkedAt))
     .all();
+  const modelRowsByProviderId = groupBy(modelRows, (model) => model.providerId);
+  const checkRowsByProviderId = groupBy(checkRows, (check) => check.providerId);
   return providerRows.map((provider) =>
     providerConnectionSchema.parse({
       ...provider,
       options: providerOptionsSchema.parse(provider.options),
       hasCredential: credentialIds.has(provider.id),
-      models: modelRows
-        .filter((model) => model.providerId === provider.id)
-        .map((model) => ({
-          ...model,
-          source: model.source,
-          capabilities: providerModelCapabilitiesSchema.parse(model.capabilities),
-          options: providerModelOptionsSchema.parse(model.options),
-        })),
-      checks: checkRows.filter((check) => check.providerId === provider.id).slice(0, 12),
+      models: (modelRowsByProviderId[provider.id] ?? []).map((model) => ({
+        ...model,
+        source: model.source,
+        capabilities: providerModelCapabilitiesSchema.parse(model.capabilities),
+        options: providerModelOptionsSchema.parse(model.options),
+      })),
+      checks: (checkRowsByProviderId[provider.id] ?? []).slice(0, 12),
     }),
   );
 }

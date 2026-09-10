@@ -198,7 +198,16 @@ test('provider CRUD isolates credentials, keeps public responses clean and enfor
   });
   assert.equal(getProviderCredential(first.id), 'WORK-SECRET');
   assert.equal(getProviderCredential(second.id), 'PERSONAL-SECRET');
-  assert.equal(JSON.stringify(listProviders()).includes('SECRET'), false);
+  const listed = listProviders();
+  assert.equal(JSON.stringify(listed).includes('SECRET'), false);
+  assert.deepEqual(
+    listed.find((provider) => provider.id === first.id)?.models.map((model) => model.modelId),
+    ['gpt-work'],
+  );
+  assert.deepEqual(
+    listed.find((provider) => provider.id === second.id)?.models.map((model) => model.modelId),
+    ['gpt-personal'],
+  );
   setDefaultProviderModel(first.models[0]!.id);
   assert.throws(
     () => updateProvider(updateInput(first, { enabled: false, credential: undefined })),

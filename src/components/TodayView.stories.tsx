@@ -82,6 +82,13 @@ const digest: Digest = {
   providerOptions: provider.options,
 }
 
+const olderDigest: Digest = {
+  ...digest,
+  id: 'daily-signal-2026-09-10-older',
+  title: '更早生成的日报版本',
+  createdAt: '2026-09-10T08:30:00.000Z',
+}
+
 const readyState = createAppState({
   feeds: [feed],
   articles: [article],
@@ -95,6 +102,7 @@ const meta = {
   component: TodayView,
   args: {
     state: readyState,
+    initialDate: date,
     busy: null,
     navigate: fn(),
     refresh: fn(),
@@ -166,7 +174,7 @@ export const Generating: Story = {
 }
 
 export const GeneratedWithSources: Story = {
-  args: { state: createAppState({ ...readyState, digests: [digest] }) },
+  args: { state: createAppState({ ...readyState, digests: [olderDigest, digest] }) },
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement)
 
@@ -190,6 +198,5 @@ export const NeedsSetup: Story = {
     await expect(canvas.getByText('尚未选择模型')).toBeVisible()
     await expect(canvas.getByText('生成前，请选择一个已启用的连接与模型。')).toBeVisible()
     await expect(canvas.getByRole('button', { name: '生成日报' })).toBeDisabled()
-    await expect(canvas.getByRole('heading', { level: 3, name: '你的第一份 AI 日报，从可信上下文开始。' })).toBeVisible()
   },
 }

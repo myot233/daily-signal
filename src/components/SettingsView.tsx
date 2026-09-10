@@ -1,3 +1,4 @@
+import { differenceBy } from 'es-toolkit/array';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { unstable_usePrompt, useLocation, useNavigate, useParams } from 'react-router';
 import {
@@ -121,7 +122,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
     if (!selected) return;
     void perform('获取模型目录', async () => {
       const result = await rpc.providers.discoverModels({ id: selected.id });
-      setDiscoveryState({ providerId: selected.id, models: result.models.filter(candidate => !selected.models.some(model => model.modelId === candidate.modelId)) });
+      setDiscoveryState({ providerId: selected.id, models: differenceBy(result.models, selected.models, model => model.modelId) });
       notify({ kind: 'success', message: `找到 ${result.models.length} 个模型候选；选择后才会保存。` });
     });
   }
