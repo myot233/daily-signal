@@ -9,13 +9,17 @@ import { HttpError } from './errors';
 // Test-only loading boundary: select the isolated DB before importing its modules.
 process.env.DATABASE_PATH = ':memory:';
 const { db, getSettings, getState } = await import('./db');
-const { articles, digests, feeds, settings } = await import('./schema');
+const { articles, digests, feeds, providerCredentials, providerModels, providers, settings } = await import('./schema');
 const { configuredModel, generateDigest, testConnection } = await import('./ai');
 const input = { date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'KEY-SENTINEL-NEVER-PERSIST' } satisfies DigestInput;
 
 beforeEach(() => {
-  db.delete(digests).run(); db.delete(feeds).run();
+  db.delete(digests).run(); db.delete(feeds).run(); db.delete(providerCredentials).run();
   db.insert(feeds).values({ id: 'feed', url: 'https://example.com/rss', title: 'Engineering', category: 'Tech', siteUrl: 'https://example.com', createdAt: input.startAt }).run();
+  const defaultModelId = db.select({ id: settings.defaultProviderModelId }).from(settings).where(eq(settings.id, 1)).get()!.id!;
+  const providerId = db.select({ id: providerModels.providerId }).from(providerModels).where(eq(providerModels.id, defaultModelId)).get()!.id;
+  db.update(providers).set({ presetId: 'openai', protocol: 'openai-chat-completions', baseUrl: 'https://api.openai.com/v1', options: { timeoutMs: 120_000, maxOutputTokens: 6_000, deepseekThinking: 'disabled' } }).where(eq(providers.id, providerId)).run();
+  db.update(providerModels).set({ modelId: 'test-model', enabled: true }).where(eq(providerModels.id, defaultModelId)).run();
   db.update(settings).set({ value: { ...getSettings(), baseUrl: 'https://api.openai.com/v1', model: 'test-model' }, apiKey: null }).where(eq(settings.id, 1)).run();
 });
 function addArticle(id: string, content = 'A concrete release with a migration guide.', publishedAt = '2026-09-10T12:00:00.000Z', feedId = 'feed', url = `https://example.com/${id}`) {
@@ -133,7 +137,9 @@ test('connection test accepts a successful nonempty response without depending o
 
 test('connection tests and digests use the saved key without returning it', async () => {
   const apiKey = 'DB-CREDENTIAL-SENTINEL';
-  db.update(settings).set({ apiKey }).where(eq(settings.id, 1)).run();
+  const defaultModelId = db.select({ id: settings.defaultProviderModelId }).from(settings).where(eq(settings.id, 1)).get()!.id!;
+  const providerId = db.select({ id: providerModels.providerId }).from(providerModels).where(eq(providerModels.id, defaultModelId)).get()!.id;
+  db.insert(providerCredentials).values({ providerId, apiKey, updatedAt: new Date().toISOString() }).run();
   const authorizations: string[] = [];
   const transport: NonNullable<Parameters<typeof configuredModel>[2]> = async (_url, options) => {
     authorizations.push(new Headers(options?.headers).get('authorization') ?? '');
@@ -149,7 +155,7 @@ test('connection tests and digests use the saved key without returning it', asyn
   assert.equal(getState().hasApiKey, true);
   await testConnection({ baseUrl, model, deepseekThinking, apiKey: 'ONE-OFF-KEY' }, { transport });
   assert.equal(authorizations.at(-1), 'Bearer ONE-OFF-KEY');
-  assert.equal(db.select().from(settings).get()?.apiKey, apiKey);
+  assert.equal(db.select().from(providerCredentials).where(eq(providerCredentials.providerId, providerId)).get()?.apiKey, apiKey);
 });
 
 test('missing keys and changed test endpoints reject before network access', async () => {

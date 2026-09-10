@@ -20,7 +20,11 @@
     "db:migrate": "tsx server/migrate.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.52",
+    "@ai-sdk/google": "^4.0.67",
+    "@ai-sdk/openai": "^4.0.65",
     "@ai-sdk/openai-compatible": "^3.0.46",
+    "@ai-sdk/provider": "4.0.13",
     "@orpc/client": "^1.15.0",
     "@orpc/contract": "^1.15.0",
     "@orpc/server": "^1.15.0",

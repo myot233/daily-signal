@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { providerConnectionSchema, providerOptionsSchema } from './providers/schemas';
+import { providerProtocolSchema } from './providers/schemas';
 
 export const feedSchema = z.object({
   id: z.string(), url: z.string(), title: z.string(), category: z.string(), siteUrl: z.string(),
@@ -34,6 +36,7 @@ export const digestInputSchema = z.object({
   startAt: z.iso.datetime().transform(value => new Date(value).toISOString()),
   endAt: z.iso.datetime().transform(value => new Date(value).toISOString()),
   apiKey: apiKeySchema.optional(),
+  providerModelId: z.string().uuid().optional(),
 }).strict().superRefine((value, ctx) => {
   const start = Date.parse(value.startAt), end = Date.parse(value.endAt);
   const hours = (end - start) / 3_600_000;
@@ -45,10 +48,14 @@ export const digestInputSchema = z.object({
 export const digestSchema = z.object({
   id: z.string(), date: z.string(), title: z.string(), markdown: z.string(), createdAt: z.string(),
   articleCount: z.number().int().nonnegative(), model: z.string(), sources: z.array(articleSchema),
+  providerId: z.string().uuid().nullable(), providerName: z.string().nullable(),
+  providerProtocol: providerProtocolSchema.nullable(), providerModelId: z.string().uuid().nullable(),
+  providerOptions: providerOptionsSchema.nullable(),
 });
 export const appStateSchema = z.object({
   feeds: z.array(feedSchema), articles: z.array(articleSchema), digests: z.array(digestSchema),
   settings: settingsSchema, hasApiKey: z.boolean(), defaultTemplate: z.string(),
+  providers: z.array(providerConnectionSchema), defaultProviderModelId: z.string().uuid().nullable(),
 });
 const sourceErrorSchema = z.object({ url: z.string(), error: z.string() });
 export const refreshResultSchema = z.object({ added: z.number().int().nonnegative(), errors: z.array(sourceErrorSchema) });

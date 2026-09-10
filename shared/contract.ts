@@ -1,6 +1,12 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import { addFeedSchema, appStateSchema, connectionSchema, digestInputSchema, digestSchema, feedSchema, idSchema, importOpmlSchema, importResultSchema, okSchema, refreshResultSchema, settingsSchema, settingsUpdateSchema } from './types';
+import {
+  providerConnectionSchema, providerCreateSchema, providerDiscoverResultSchema, providerDiscoverSchema,
+  providerListSchema, providerModelRemoveSchema, providerModelSaveSchema, providerModelSchema,
+  providerRemoveSchema, providerTestResultSchema, providerTestSchema, providerUpdateSchema,
+  setDefaultProviderModelSchema,
+} from './providers/schemas';
 
 const procedure = oc.errors({
   BAD_REQUEST: {}, NOT_FOUND: {}, CONFLICT: {}, PAYLOAD_TOO_LARGE: {},
@@ -16,6 +22,19 @@ export const contract = {
     export: procedure.output(z.object({ opml: z.string() })),
   },
   settings: { save: procedure.input(settingsUpdateSchema).output(settingsSchema) },
+  providers: {
+    list: procedure.output(providerListSchema),
+    create: procedure.input(providerCreateSchema).output(providerConnectionSchema),
+    update: procedure.input(providerUpdateSchema).output(providerConnectionSchema),
+    remove: procedure.input(providerRemoveSchema).output(okSchema),
+    discoverModels: procedure.input(providerDiscoverSchema).output(providerDiscoverResultSchema),
+    test: procedure.input(providerTestSchema).output(providerTestResultSchema),
+  },
+  providerModels: {
+    save: procedure.input(providerModelSaveSchema).output(providerModelSchema),
+    remove: procedure.input(providerModelRemoveSchema).output(okSchema),
+  },
+  defaultModel: { set: procedure.input(setDefaultProviderModelSchema).output(okSchema) },
   ai: { test: procedure.input(connectionSchema).output(okSchema) },
   digests: {
     generate: procedure.input(digestInputSchema).output(digestSchema),

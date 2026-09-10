@@ -22,6 +22,13 @@
       "when": 1789013315705,
       "tag": "0002_persist-provider-key",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789014858322,
+      "tag": "0003_clammy_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

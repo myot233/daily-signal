@@ -4,9 +4,14 @@ import { contract } from '../shared/contract';
 import { db, getSettings, getState } from './db';
 import { digests, feeds, settings } from './schema';
 import { addFeed, exportOpml, importOpml, refreshFeeds } from './feeds';
-import { generateDigest, testConnection } from './ai';
+import { generateDigest, testConnection, testSavedProviderConnection } from './ai';
 import { HttpError } from './errors';
 import { normalizePublicUrl, PublicFetchError } from './network';
+import { discoverModels } from './providers/discovery';
+import {
+  catalogResponse, createProvider, removeProvider, removeProviderModel, replaceLegacyDefaultConnection,
+  saveProviderModel, setDefaultProviderModel, updateProvider,
+} from './providers/repository';
 
 export interface RpcContext { signal?: AbortSignal }
 const implementer = implement(contract).$context<RpcContext>();
@@ -56,12 +61,33 @@ export const router = implementer.router({
     save: rpc.settings.save.handler(({ input }) => {
       normalizePublicUrl(input.baseUrl);
       const { apiKey, ...value } = input;
-      // A credential belongs to its saved endpoint. Changing it requires a new key.
-      const credential = apiKey !== undefined ? { apiKey }
-        : value.baseUrl !== getSettings().baseUrl ? { apiKey: null } : {};
-      db.update(settings).set({ value, ...credential }).where(eq(settings.id, 1)).run();
-      return value;
+      const current = getSettings();
+      const connectionChanged = value.baseUrl !== current.baseUrl || value.model !== current.model
+        || value.deepseekThinking !== current.deepseekThinking;
+      if (connectionChanged || apiKey !== undefined) {
+        replaceLegacyDefaultConnection(value, apiKey);
+      }
+      db.update(settings).set({ value }).where(eq(settings.id, 1)).run();
+      return getSettings();
     }),
+  },
+  providers: {
+    list: rpc.providers.list.handler(() => {
+      const state = getState();
+      return { catalog: catalogResponse(), providers: state.providers, defaultProviderModelId: state.defaultProviderModelId };
+    }),
+    create: rpc.providers.create.handler(({ input }) => createProvider(input)),
+    update: rpc.providers.update.handler(({ input }) => updateProvider(input)),
+    remove: rpc.providers.remove.handler(({ input }) => { removeProvider(input.id, input.revision); return { ok: true }; }),
+    discoverModels: rpc.providers.discoverModels.handler(({ input, context }) => discoverModels(input.id, undefined, context.signal)),
+    test: rpc.providers.test.handler(({ input, context }) => testSavedProviderConnection(input.providerId, input.modelId, { signal: context.signal })),
+  },
+  providerModels: {
+    save: rpc.providerModels.save.handler(({ input }) => saveProviderModel(input)),
+    remove: rpc.providerModels.remove.handler(({ input }) => { removeProviderModel(input.id); return { ok: true }; }),
+  },
+  defaultModel: {
+    set: rpc.defaultModel.set.handler(({ input }) => { setDefaultProviderModel(input.providerModelId); return { ok: true }; }),
   },
   ai: {
     test: rpc.ai.test.handler(async ({ input, context }) => {
