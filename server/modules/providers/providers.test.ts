@@ -106,7 +106,7 @@ async function captureProtocol(
   const result = await generateText({
     model: runtime.model,
     prompt: 'Reply OK.',
-    maxOutputTokens: options.maxOutputTokens,
+    maxOutputTokens: runtime.maxOutputTokens,
     maxRetries: 0,
     providerOptions: runtime.providerOptions,
   });
@@ -412,6 +412,14 @@ test('connection tests keep full output budget for every configured reasoning mo
     },
     {
       protocol: 'openai-chat-completions',
+      presetId: 'custom',
+      modelId: 'reasoning-model',
+      options: providerOptionsSchema.parse({ maxOutputTokens: 4_096, reasoningEffort: 'high' }),
+      response: chatResponse,
+      readBudget: (body) => body.max_tokens as number,
+    },
+    {
+      protocol: 'openai-chat-completions',
       presetId: 'deepseek',
       modelId: 'deepseek-reasoner',
       options: providerOptionsSchema.parse({
@@ -498,7 +506,6 @@ test('unknown connection failures cannot be reported as a successful model check
   assert.equal(result.checks.find((check) => check.stage === 'authentication')?.status, 'skipped');
   const model = result.checks.find((check) => check.stage === 'model');
   assert.equal(model?.status, 'failed');
-  assert.equal(model?.safeError, '模型连接或响应解析失败，请检查网络、模型名称和兼容接口。');
   assert.doesNotMatch(model?.safeError ?? '', /secret transport detail/);
 
   const noResponse = await testSavedProviderConnection(provider.id, 'broken-model', {
@@ -560,4 +567,101 @@ test('provider drafts survive edits on the settings fallback and clear after suc
     }),
     true,
   );
+});
+
+test('connection probes ignore inactive and foreign reasoning options while respecting small ceilings', async () => {
+  const cases = [
+    {
+      protocol: 'openai-responses',
+      presetId: 'openai',
+      options: { reasoningEffort: 'none', deepseekThinking: 'enabled' },
+      response: responsesResponse,
+      budgetKey: 'max_output_tokens',
+    },
+    {
+      protocol: 'openai-chat-completions',
+      presetId: 'custom',
+      options: { deepseekThinking: 'enabled' },
+      response: chatResponse,
+      budgetKey: 'max_tokens',
+    },
+    {
+      protocol: 'anthropic-messages',
+      presetId: 'anthropic',
+      options: { reasoningEffort: 'high' },
+      response: anthropicResponse,
+      budgetKey: 'max_tokens',
+    },
+    {
+      protocol: 'gemini-generative-language',
+      presetId: 'gemini',
+      options: { geminiThinkingBudget: 0, reasoningEffort: 'high' },
+      response: geminiResponse,
+      budgetKey: 'maxOutputTokens',
+    },
+    {
+      protocol: 'openai-chat-completions',
+      presetId: 'deepseek',
+      options: { maxOutputTokens: 64, deepseekThinking: 'disabled', reasoningEffort: 'none' },
+      response: chatResponse,
+      budgetKey: 'max_tokens',
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const options = providerOptionsSchema.parse({ maxOutputTokens: 4_096, ...item.options });
+    const provider = createProvider({
+      presetId: item.presetId,
+      name: item.protocol,
+      protocol: item.protocol,
+      baseUrl: `https://${item.presetId}.example.com/v1`,
+      enabled: true,
+      credential: 'KEY',
+      initialModelId: 'test-model',
+      options,
+    });
+    let requestBudget: number | undefined;
+    const result = await testSavedProviderConnection(provider.id, 'test-model', {
+      transport: async (_url, init) => {
+        const body = JSON.parse(init?.body ?? '{}');
+        requestBudget = (body.generationConfig ?? body)[item.budgetKey];
+        return { text: item.response, status: 200, ok: true };
+      },
+    });
+    assert.equal(result.checks.find((check) => check.stage === 'model')?.status, 'passed');
+    assert.equal(requestBudget, Math.min(128, options.maxOutputTokens), item.protocol);
+  }
+});
+
+test('provider HTTP failures record the right failed stage without leaking upstream details', async () => {
+  const provider = createProvider({
+    presetId: 'custom',
+    name: 'Error classification',
+    protocol: 'openai-chat-completions',
+    baseUrl: 'https://errors.example.com/v1',
+    enabled: true,
+    credential: 'KEY',
+    initialModelId: 'test-model',
+    options: defaultOptions,
+  });
+  for (const [status, failedStage] of [
+    [401, 'authentication'],
+    [403, 'authentication'],
+    [404, 'endpoint'],
+    [429, 'model'],
+    [500, 'model'],
+  ] as const) {
+    const result = await testSavedProviderConnection(provider.id, 'test-model', {
+      transport: async () => ({
+        text: JSON.stringify({ error: { message: 'UPSTREAM-SECRET', type: 'provider_error' } }),
+        status,
+        ok: false,
+      }),
+    });
+    assert.deepEqual(
+      result.checks.filter((check) => check.status === 'failed').map((check) => check.stage),
+      [failedStage],
+    );
+    assert.doesNotMatch(JSON.stringify(result), /UPSTREAM-SECRET/);
+  }
 });

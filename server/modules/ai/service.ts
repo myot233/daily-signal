@@ -3,23 +3,13 @@ import { APICallError, generateText } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { SharedV4ProviderOptions as AiProviderOptions } from '@ai-sdk/provider';
 import { connectionSchema, digestInputSchema } from '../../../shared/types';
-import type {
-  Article,
-  ConnectionInput,
-  Digest,
-  DigestInput,
-  Settings,
-} from '../../../shared/types';
+import type { Article, ConnectionInput, Digest, DigestInput } from '../../../shared/types';
 import { getApiKey, getSettings } from '../settings/repository';
 import { listArticles } from '../feeds/repository';
 import { saveDigest } from './repository';
 import { HttpError } from '../../core/errors';
-import {
-  fetchPublicText,
-  normalizePublicUrl,
-  PublicFetchError,
-} from '../../infrastructure/network/public-fetch';
-import { createRuntimeModel } from '../providers/adapters';
+import { fetchPublicText, PublicFetchError } from '../../infrastructure/network/public-fetch';
+import { createLegacyRuntimeModel, createRuntimeModel } from '../providers/adapters';
 import {
   getProvider,
   getProviderCredential,
@@ -43,6 +33,30 @@ class ProviderStageError extends HttpError {
   }
 }
 
+interface ProviderErrorInfo {
+  failure: ProviderStageError['failure'];
+  message: string;
+}
+
+const providerErrors: Readonly<Partial<Record<number, ProviderErrorInfo>>> = {
+  401: {
+    failure: 'authentication',
+    message: 'API Key 无效，请检查密钥。',
+  },
+  403: {
+    failure: 'authentication',
+    message: '模型访问被拒绝，请检查 Key 权限。',
+  },
+  404: {
+    failure: 'endpoint',
+    message: 'API 地址或模型不存在，请检查配置。',
+  },
+  429: {
+    failure: 'quota',
+    message: '模型服务限额或配额不足，请稍后重试。',
+  },
+};
+
 export function resolveApiKey(baseUrl: string, override?: string): string {
   if (override) return override;
   const saved = getSettings();
@@ -58,29 +72,6 @@ const editorialRules = `你是一位谨慎的技术日报编辑，用中文写�
 同一事件多源报道合并，只能引用提供的原始 URL。dateEstimated 表示首次发现时间，不等于发布时间。
 所有内容基于订阅正文或摘要，不能声称已阅读全文。资料不充分时明确说明，不凑数。
 输出纯 Markdown，不用外层代码围栏、不输出 HTML或图片、不附来源索引（系统会自动附完整索引）。`;
-
-export function configuredModel(
-  settings: Pick<Settings, 'baseUrl' | 'model' | 'deepseekThinking'>,
-  apiKey: string,
-  transport: typeof fetchPublicText = fetchPublicText,
-): LanguageModel {
-  const baseUrl = normalizePublicUrl(settings.baseUrl).replace(/\/+$/, '');
-  return createRuntimeModel(
-    {
-      protocol: 'openai-chat-completions',
-      presetId: new URL(baseUrl).hostname === 'api.deepseek.com' ? 'deepseek' : 'custom',
-      baseUrl,
-      modelId: settings.model,
-      apiKey,
-      options: {
-        timeoutMs: 120_000,
-        maxOutputTokens: 6_000,
-        deepseekThinking: settings.deepseekThinking,
-      },
-    },
-    transport,
-  ).model;
-}
 
 async function complete(
   model: LanguageModel,
@@ -133,28 +124,14 @@ async function complete(
       );
     if (APICallError.isInstance(error)) {
       const status = error.statusCode;
-      const messages: Record<number, string> = {
-        401: 'API Key 无效，请检查密钥。',
-        403: '模型访问被拒绝，请检查 Key 权限。',
-        404: 'API 地址或模型不存在，请检查配置。',
-        429: '模型服务限额或配额不足，请稍后重试。',
-      };
-      const failure =
-        status === undefined
-          ? 'unknown'
-          : status === 401 || status === 403
-            ? 'authentication'
-            : status === 429
-              ? 'quota'
-              : status === 404
-                ? 'endpoint'
-                : 'model';
+      if (status === undefined) {
+        throw new ProviderStageError(502, '模型服务请求失败，请检查服务配置。', 'unknown');
+      }
+      const info = providerErrors[status];
       throw new ProviderStageError(
         502,
-        status && messages[status]
-          ? messages[status]
-          : `模型服务请求失败${status ? `（HTTP ${status}）` : ''}，请检查服务配置。`,
-        failure,
+        info?.message ?? `模型服务请求失败${status ? `（HTTP ${status}）` : ''}，请检查服务配置。`,
+        info?.failure ?? 'model',
       );
     }
     // No raw message/cause is exposed: provider errors may include credentials.
@@ -174,17 +151,15 @@ export async function testConnection(
   const apiKey = resolveApiKey(input.baseUrl, input.apiKey);
   const timeout = AbortSignal.timeout(120_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  const budget =
-    new URL(input.baseUrl).hostname === 'api.deepseek.com' && input.deepseekThinking === 'enabled'
-      ? 16_384
-      : 32;
+  const runtime = createLegacyRuntimeModel(input, apiKey, options.transport);
   await complete(
-    options.model ?? configuredModel(input, apiKey, options.transport),
+    options.model ?? runtime.model,
     'Reply briefly.',
     'Reply with OK.',
-    budget,
+    runtime.connectionTestMaxOutputTokens(32),
     signal,
     '连接测试',
+    runtime.providerOptions,
   );
 }
 
@@ -236,9 +211,8 @@ export async function generateDigest(
   const runtime = options.model
     ? {
         model: options.model,
-        options: snapshot.provider.options,
         providerOptions: undefined,
-        requestMaxOutputTokens: (budget: number) => budget,
+        maxOutputTokens: snapshot.provider.options.maxOutputTokens,
       }
     : createRuntimeModel(
         {
@@ -262,7 +236,7 @@ export async function generateDigest(
           runtime.model,
           `${editorialRules}\n这是资料提取阶段：保留本批重要事实、明确版本、影响分析及各自原始来源 ID/URL；区分旧闻。只输出简洁的事实要点，合并重复信息，不展开写成完整日报，以便最后统一编辑。`,
           `日报日期：${input.date}。资料批次 ${index + 1}/${batches.length}：\n${batches[index]}`,
-          runtime.requestMaxOutputTokens(runtime.options.maxOutputTokens),
+          runtime.maxOutputTokens,
           signal,
           `资料提取 ${index + 1}/${batches.length}`,
           runtime.providerOptions,
@@ -275,7 +249,7 @@ export async function generateDigest(
     runtime.model,
     `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${snapshot.template}`,
     `日报日期：${input.date}；时间范围 [${input.startAt}, ${input.endAt})；参考文章 ${sources.length} 篇。\n资料：\n${material}`,
-    runtime.requestMaxOutputTokens(runtime.options.maxOutputTokens),
+    runtime.maxOutputTokens,
     signal,
     '日报合成',
     runtime.providerOptions,
@@ -346,25 +320,11 @@ export async function testSavedProviderConnection(
       },
       options.transport,
     );
-    const thinkingConfigured =
-      (provider.protocol === 'anthropic-messages' &&
-        runtime.options.anthropicThinkingBudget !== undefined) ||
-      (provider.protocol === 'gemini-generative-language' &&
-        (runtime.options.geminiThinkingBudget ?? 0) > 0) ||
-      (provider.protocol === 'openai-chat-completions' &&
-        provider.presetId === 'deepseek' &&
-        runtime.options.deepseekThinking === 'enabled') ||
-      (provider.protocol.startsWith('openai-') &&
-        runtime.options.reasoningEffort !== undefined &&
-        runtime.options.reasoningEffort !== 'none');
-    const testBudget = thinkingConfigured
-      ? runtime.options.maxOutputTokens
-      : Math.max(32, Math.min(runtime.options.maxOutputTokens, 128));
     await complete(
       runtime.model,
       'Reply briefly.',
       'Reply with OK.',
-      runtime.requestMaxOutputTokens(testBudget),
+      runtime.connectionTestMaxOutputTokens(),
       signal,
       '连接测试',
       runtime.providerOptions,

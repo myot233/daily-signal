@@ -4,6 +4,8 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { eq } from 'drizzle-orm';
 import { digestInputSchema, settingsSchema } from '../../../shared/types';
 import type { DigestInput } from '../../../shared/types';
+import { createLegacyRuntimeModel } from '../providers/adapters';
+import type { ProviderTransport } from '../providers/transport';
 import { HttpError } from '../../core/errors';
 
 // Test-only loading boundary: select the isolated DB before importing its modules.
@@ -13,7 +15,7 @@ const { getSettings } = await import('../settings/repository');
 const { getState } = await import('../state/service');
 const { articles, digests, feeds, providerCredentials, providerModels, providers, settings } =
   await import('../../infrastructure/database/schema');
-const { configuredModel, generateDigest, testConnection } = await import('./service');
+const { generateDigest, testConnection } = await import('./service');
 const input = {
   date: '2026-09-10',
   startAt: '2026-09-10T00:00:00.000Z',
@@ -343,7 +345,7 @@ test('connection tests and digests use the saved key without returning it', asyn
     .values({ providerId, apiKey, updatedAt: new Date().toISOString() })
     .run();
   const authorizations: string[] = [];
-  const transport: NonNullable<Parameters<typeof configuredModel>[2]> = async (_url, options) => {
+  const transport: ProviderTransport = async (_url, options) => {
     authorizations.push(new Headers(options?.headers).get('authorization') ?? '');
     return { text: await completionResponse('A complete answer.').text(), status: 200, ok: true };
   };
@@ -401,7 +403,7 @@ test('DeepSeek thinking defaults cannot consume the summary budget before the an
     baseUrl: 'https://api.deepseek.com',
     model: 'deepseek-v4-flash',
   };
-  const model = configuredModel(configuration, input.apiKey, async (_url, options) => {
+  const model = createLegacyRuntimeModel(configuration, input.apiKey, async (_url, options) => {
     const request = JSON.parse(options?.body ?? '{}');
     // Model the provider's default: high-effort reasoning exhausts a small cap.
     const reasoningConsumesBudget = request.thinking?.type !== 'disabled';
@@ -413,7 +415,7 @@ test('DeepSeek thinking defaults cannot consume the summary budget before the an
       status: 200,
       ok: true,
     };
-  });
+  }).model;
   const { baseUrl, model: modelId, deepseekThinking } = configuration;
   await testConnection(
     { baseUrl, model: modelId, deepseekThinking, apiKey: input.apiKey },
@@ -428,7 +430,7 @@ test('DeepSeek thinking defaults cannot consume the summary budget before the an
 
 test('DeepSeek mode does not break other compatible providers with unknown parameters', async () => {
   const configuration = { ...getSettings(), baseUrl: 'https://api.openai.com/v1' };
-  const model = configuredModel(configuration, input.apiKey, async (_url, options) => {
+  const model = createLegacyRuntimeModel(configuration, input.apiKey, async (_url, options) => {
     const request = JSON.parse(options?.body ?? '{}');
     if ('thinking' in request)
       return {
@@ -437,7 +439,7 @@ test('DeepSeek mode does not break other compatible providers with unknown param
         ok: false,
       };
     return { text: await completionResponse('Connected.').text(), status: 200, ok: true };
-  });
+  }).model;
   const { baseUrl, model: modelId, deepseekThinking } = configuration;
   await testConnection(
     { baseUrl, model: modelId, deepseekThinking, apiKey: input.apiKey },

@@ -83,7 +83,7 @@ flowchart LR
   Gemini --> Transport
 ```
 
-沿用项目现有 React、Tailwind v4、Radix、TanStack Query、Jotai、oRPC、Zod、Drizzle 和 SQLite。继续使用 AI SDK，原生协议通过对应 provider 包适配。日报业务只接收统一的 `LanguageModel`，不再在生成逻辑里按 hostname 判断厂商参数。
+沿用项目现有 React、Tailwind v4、Radix、TanStack Query、Jotai、oRPC、Zod、Drizzle 和 SQLite。继续使用 AI SDK，原生协议通过对应 provider 包适配。AI 业务只消费统一的 `RuntimeModel`：模型实例、SDK 参数、生成预算和连接探测预算，不判断协议、品牌或 thinking 参数。
 
 当前模块划分：
 
@@ -91,7 +91,7 @@ flowchart LR
 shared/providers/catalog.ts       品牌、预设、协议与非敏感默认值
 shared/providers/schemas.ts       输入、公共响应、模型能力、测试结果
 server/modules/providers/repository.ts  连接、模型、凭据持久化与默认选择事务
-server/modules/providers/adapters.ts    按协议构造模型与映射参数
+server/modules/providers/adapters.ts    协议适配器注册表、统一运行时与预算换算
 server/modules/providers/discovery.ts   模型目录查询与格式归一
 server/modules/providers/transport.ts   基于 infrastructure/network/public-fetch.ts 的受控传输
 src/components/SettingsView.tsx   连接列表、详情、模型列表、添加对话框
@@ -125,6 +125,10 @@ registry 只提供默认值，升级预设时不覆盖用户保存的 URL、模�
 公共接口为 `providers.list/create/update/remove`、`providers.test/discoverModels`、`providerModels.save/remove` 和 `defaultModel.set`。生成入口只引用数据库中的 `providerModelId`，不从浏览器重复提交整套配置或密钥。旧 settings 接口继续由仓储层桥接，避免模板或 Key 更新破坏原生协议配置。
 
 协议适配器统一负责构造模型、可选的模型发现、参数映射和能力验证。地址规范化按协议处理，不能通用地补 `/v1`，也不能根据模型 ID 的前缀推断请求协议。DeepSeek 思考、OpenAI reasoning、Anthropic thinking、Gemini thinking 采用分别验证的 schema；“未知能力”不应自动启用参数。
+
+`adapters` 以完整的 `Record<ProviderProtocol, ProviderAdapter>` 注册协议，新增协议必须实现统一适配契约。各适配器只解释自己的推理参数，返回模型、SDK 参数、显式推理配置状态和 SDK 额外计入的 token 预算；`createRuntimeModel` 将这些差异收敛为业务使用的 `maxOutputTokens` 与 `connectionTestMaxOutputTokens()`。运行时不暴露原始配置供业务再次按厂商判断。
+
+生成始终保留配置的完整输出上限，不能因未显式开启推理而缩小资料提取预算。连接探测仅在未显式配置推理时采用小预算；Anthropic SDK 额外加入的 thinking tokens 从总上限中预留。推理配置状态不代表模型能力或服务端默认行为；非当前协议的参数不得触发推理预算。旧单连接接口的 hostname 识别集中在 `createLegacyRuntimeModel`，仍保留原有探测预算语义。
 
 ## 数据模型与持久化
 
