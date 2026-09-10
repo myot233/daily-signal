@@ -26,12 +26,14 @@ export const apiKeySchema = z.string().max(4_096)
   .refine(value => !/\p{Cc}/u.test(value), 'API Key 不能包含控制字符。')
   .transform(value => value.trim()).pipe(z.string().min(1, '请输入 API Key。'));
 export const settingsSchema = modelConfigSchema.extend({ template: z.string().trim().min(1, '模板不能为空。').max(12_000) }).strict();
-export const connectionSchema = modelConfigSchema.extend({ apiKey: apiKeySchema }).strict();
+// Omitted keeps the saved key; null explicitly removes it. Responses never contain it.
+export const settingsUpdateSchema = settingsSchema.extend({ apiKey: apiKeySchema.nullable().optional() });
+export const connectionSchema = modelConfigSchema.extend({ apiKey: apiKeySchema.optional() }).strict();
 export const digestInputSchema = z.object({
   date: z.iso.date(),
   startAt: z.iso.datetime().transform(value => new Date(value).toISOString()),
   endAt: z.iso.datetime().transform(value => new Date(value).toISOString()),
-  apiKey: apiKeySchema,
+  apiKey: apiKeySchema.optional(),
 }).strict().superRefine((value, ctx) => {
   const start = Date.parse(value.startAt), end = Date.parse(value.endAt);
   const hours = (end - start) / 3_600_000;
@@ -46,7 +48,7 @@ export const digestSchema = z.object({
 });
 export const appStateSchema = z.object({
   feeds: z.array(feedSchema), articles: z.array(articleSchema), digests: z.array(digestSchema),
-  settings: settingsSchema, defaultTemplate: z.string(),
+  settings: settingsSchema, hasApiKey: z.boolean(), defaultTemplate: z.string(),
 });
 const sourceErrorSchema = z.object({ url: z.string(), error: z.string() });
 export const refreshResultSchema = z.object({ added: z.number().int().nonnegative(), errors: z.array(sourceErrorSchema) });
@@ -59,6 +61,7 @@ export const okSchema = z.object({ ok: z.literal(true) });
 export type Feed = z.infer<typeof feedSchema>;
 export type Article = z.infer<typeof articleSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
+export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
 export type Digest = z.infer<typeof digestSchema>;
 export type AppState = z.infer<typeof appStateSchema>;
 export type RefreshResult = z.infer<typeof refreshResultSchema>;

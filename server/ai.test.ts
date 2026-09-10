@@ -11,12 +11,12 @@ process.env.DATABASE_PATH = ':memory:';
 const { db, getSettings, getState } = await import('./db');
 const { articles, digests, feeds, settings } = await import('./schema');
 const { configuredModel, generateDigest, testConnection } = await import('./ai');
-const input: DigestInput = { date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'KEY-SENTINEL-NEVER-PERSIST' };
+const input = { date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'KEY-SENTINEL-NEVER-PERSIST' } satisfies DigestInput;
 
 beforeEach(() => {
   db.delete(digests).run(); db.delete(feeds).run();
   db.insert(feeds).values({ id: 'feed', url: 'https://example.com/rss', title: 'Engineering', category: 'Tech', siteUrl: 'https://example.com', createdAt: input.startAt }).run();
-  db.update(settings).set({ value: { ...getSettings(), model: 'test-model' } }).where(eq(settings.id, 1)).run();
+  db.update(settings).set({ value: { ...getSettings(), baseUrl: 'https://api.openai.com/v1', model: 'test-model' }, apiKey: null }).where(eq(settings.id, 1)).run();
 });
 function addArticle(id: string, content = 'A concrete release with a migration guide.', publishedAt = '2026-09-10T12:00:00.000Z', feedId = 'feed', url = `https://example.com/${id}`) {
   db.insert(articles).values({ id, feedId, title: `Release ${id}`, url, content, publishedAt, dateEstimated: false }).run();
@@ -115,7 +115,7 @@ test('cost limit rejects before contacting a provider', async () => {
   assert.equal(calls, 0);
 });
 
-test('shared schema permits DST days and refuses secrets in persistent settings', () => {
+test('shared schema permits DST days and refuses secrets in public settings', () => {
   for (const date of [
     { date: '2026-03-08', startAt: '2026-03-08T05:00:00.000Z', endAt: '2026-03-09T04:00:00.000Z' },
     { date: '2026-11-01', startAt: '2026-11-01T04:00:00.000Z', endAt: '2026-11-02T05:00:00.000Z' },
@@ -129,6 +129,39 @@ test('connection test accepts a successful nonempty response without depending o
   const { baseUrl, model, deepseekThinking } = getSettings();
   await testConnection({ baseUrl, model, deepseekThinking, apiKey: input.apiKey }, { model: providerWithResponses(() => completionResponse('Connected.')) });
   assert.equal(getState().digests.length, 0);
+});
+
+test('connection tests and digests use the saved key without returning it', async () => {
+  const apiKey = 'DB-CREDENTIAL-SENTINEL';
+  db.update(settings).set({ apiKey }).where(eq(settings.id, 1)).run();
+  const authorizations: string[] = [];
+  const transport: NonNullable<Parameters<typeof configuredModel>[2]> = async (_url, options) => {
+    authorizations.push(new Headers(options?.headers).get('authorization') ?? '');
+    return { text: await completionResponse('A complete answer.').text(), status: 200, ok: true };
+  };
+  const { baseUrl, model, deepseekThinking } = getSettings();
+  await testConnection({ baseUrl, model, deepseekThinking }, { transport });
+  addArticle('saved-key-release');
+  const report = await generateDigest({ ...input, apiKey: undefined }, { transport });
+  assert.deepEqual(authorizations, [`Bearer ${apiKey}`, `Bearer ${apiKey}`]);
+  assert.equal(JSON.stringify(report).includes(apiKey), false);
+  assert.equal(JSON.stringify(getState()).includes(apiKey), false);
+  assert.equal(getState().hasApiKey, true);
+  await testConnection({ baseUrl, model, deepseekThinking, apiKey: 'ONE-OFF-KEY' }, { transport });
+  assert.equal(authorizations.at(-1), 'Bearer ONE-OFF-KEY');
+  assert.equal(db.select().from(settings).get()?.apiKey, apiKey);
+});
+
+test('missing keys and changed test endpoints reject before network access', async () => {
+  let requests = 0;
+  const model = providerWithResponses(() => { requests++; return completionResponse('unused'); });
+  const configuration = getSettings();
+  const connection = { baseUrl: configuration.baseUrl, model: configuration.model, deepseekThinking: configuration.deepseekThinking };
+  await assert.rejects(testConnection(connection, { model }), error => error instanceof HttpError && error.status === 400);
+  await assert.rejects(generateDigest({ ...input, apiKey: undefined }, { model }), error => error instanceof HttpError && error.status === 400);
+  db.update(settings).set({ apiKey: 'ORIGINAL-ENDPOINT-KEY' }).where(eq(settings.id, 1)).run();
+  await assert.rejects(testConnection({ ...connection, baseUrl: 'https://other.example.com/v1' }, { model }), error => error instanceof HttpError && error.status === 400);
+  assert.equal(requests, 0);
 });
 
 test('DeepSeek thinking defaults cannot consume the summary budget before the answer', async () => {

@@ -16,6 +16,7 @@ export const articles = sqliteTable('articles', {
 }, table => [uniqueIndex('articles_feed_url').on(table.feedId, table.url), index('articles_date').on(table.publishedAt)]);
 export const settings = sqliteTable('settings', {
   id: integer('id').primaryKey(), value: text('value', { mode: 'json' }).$type<Settings>().notNull(),
+  apiKey: text('api_key'),
 });
 export const digests = sqliteTable('digests', {
   id: text('id').primaryKey(), date: text('date').notNull(), title: text('title').notNull(),
