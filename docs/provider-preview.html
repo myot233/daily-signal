@@ -1,140 +1,599 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Daily Signal · 模型与服务商交互方案</title>
-  <link rel="stylesheet" href="assets/provider-preview.css">
-</head>
-<body class="bg-background text-foreground">
-  <div class="border-b bg-secondary px-6 py-3 text-center text-xs text-secondary-foreground">交互方案 · 所有连接、模型与检测结果均为示例，不保存密钥、不发起模型请求</div>
-  <main class="mx-auto max-w-6xl px-5 py-10 md:px-10 md:py-14">
-    <header class="mb-10 flex flex-wrap items-end justify-between gap-6">
-      <div><p class="mb-3 text-xs font-semibold tracking-[0.2em] text-primary">DAILY SIGNAL / YOUR INTELLIGENCE</p><h1 class="font-serif text-4xl font-semibold tracking-tight">让合适的模型，为你工作。</h1><p class="mt-3 text-sm text-muted-foreground">管理你的服务商、连接与模型。保存一次，随时切换。</p></div>
-      <button id="add" class="min-h-11 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">＋ 添加服务商</button>
-    </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Signal · 模型与服务商交互方案</title>
+    <link rel="stylesheet" href="assets/provider-preview.css" />
+  </head>
+  <body class="bg-background text-foreground">
+    <div class="border-b bg-secondary px-6 py-3 text-center text-xs text-secondary-foreground">
+      交互方案 · 所有连接、模型与检测结果均为示例，不保存密钥、不发起模型请求
+    </div>
+    <main class="mx-auto max-w-6xl px-5 py-10 md:px-10 md:py-14">
+      <header class="mb-10 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <p class="mb-3 text-xs font-semibold tracking-[0.2em] text-primary">
+            DAILY SIGNAL / YOUR INTELLIGENCE
+          </p>
+          <h1 class="font-serif text-4xl font-semibold tracking-tight">让合适的模型，为你工作。</h1>
+          <p class="mt-3 text-sm text-muted-foreground">
+            管理你的服务商、连接与模型。保存一次，随时切换。
+          </p>
+        </div>
+        <button
+          id="add"
+          class="min-h-11 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          ＋ 添加服务商
+        </button>
+      </header>
 
-    <section aria-label="默认生成模型" class="mb-8 flex flex-wrap items-center justify-between gap-5 rounded-xl border bg-card px-6 py-5">
-      <div class="flex items-center gap-4"><span id="default-icon" class="grid size-11 place-items-center rounded-lg bg-secondary"></span><div><p class="text-xs text-muted-foreground">日报默认模型</p><p id="default-model" class="mt-1 text-sm font-semibold">deepseek-chat <span class="font-normal text-muted-foreground">/ DeepSeek · 个人</span></p></div></div>
-      <span class="rounded-full bg-[#edf2e8] px-3 py-1 text-xs text-[#4d6542]">已配置 · 下次生成使用</span>
-    </section>
-
-    <div class="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
-      <aside class="min-w-0">
-        <div class="mb-4 flex items-center justify-between"><h2 class="text-xs font-semibold tracking-wider text-muted-foreground">我的连接</h2><span id="count" class="text-xs text-muted-foreground"></span></div>
-        <label class="sr-only" for="search">搜索连接</label>
-        <input id="search" class="mb-4 h-11 w-full rounded-lg border bg-card px-3 text-sm" placeholder="搜索服务商或连接…">
-        <nav id="connections" class="grid gap-2" aria-label="已保存的模型连接"></nav>
-        <p class="mt-6 px-2 text-xs leading-6 text-muted-foreground">同一服务商可添加多套连接，分别保存地址、凭据与模型。</p>
-      </aside>
-
-      <section class="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm" aria-labelledby="connection-title">
-        <div class="border-b px-6 py-6 md:px-8">
-          <div class="flex flex-wrap items-center justify-between gap-4"><div class="flex items-center gap-4"><span id="connection-icon" class="grid size-12 place-items-center rounded-xl border bg-background"></span><div><h2 id="connection-title" class="font-serif text-2xl font-semibold"></h2><p id="connection-description" class="mt-1 text-xs text-muted-foreground"></p></div></div><span id="status" class="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">尚未测试</span></div>
-          <div class="mt-6 flex gap-6" role="tablist" aria-label="连接设置">
-            <button id="tab-connection" role="tab" aria-selected="true" aria-controls="panel-connection" class="min-h-11 border-b-2 border-primary px-1 text-sm font-medium text-primary">连接配置</button>
-            <button id="tab-models" role="tab" aria-selected="false" aria-controls="panel-models" tabindex="-1" class="min-h-11 border-b-2 border-transparent px-1 text-sm text-muted-foreground">可用模型</button>
+      <section
+        aria-label="默认生成模型"
+        class="mb-8 flex flex-wrap items-center justify-between gap-5 rounded-xl border bg-card px-6 py-5"
+      >
+        <div class="flex items-center gap-4">
+          <span
+            id="default-icon"
+            class="grid size-11 place-items-center rounded-lg bg-secondary"
+          ></span>
+          <div>
+            <p class="text-xs text-muted-foreground">日报默认模型</p>
+            <p id="default-model" class="mt-1 text-sm font-semibold">
+              deepseek-chat <span class="font-normal text-muted-foreground">/ DeepSeek · 个人</span>
+            </p>
           </div>
         </div>
-
-        <form id="panel-connection" role="tabpanel" aria-labelledby="tab-connection" class="grid gap-6 px-6 py-7 md:px-8">
-          <div class="grid gap-5 sm:grid-cols-2"><div class="grid gap-2"><label for="name" class="text-sm font-medium">连接名称</label><input id="name" required class="h-11 min-w-0 rounded-lg border bg-background px-3 text-base sm:text-sm"></div><div class="grid gap-2"><label for="protocol" class="text-sm font-medium">接口协议</label><select id="protocol" class="h-11 min-w-0 rounded-lg border bg-background px-3 text-base sm:text-sm"><option>OpenAI Chat Completions</option><option>OpenAI Responses</option><option>Anthropic Messages</option><option>Google Gemini</option></select></div></div>
-          <div class="grid gap-2"><label for="endpoint" class="text-sm font-medium">API 地址</label><input id="endpoint" type="url" required class="h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-mono text-sm"><p class="text-xs leading-5 text-muted-foreground">已填入服务商默认地址。使用网关时，改为网关提供的 API 根地址。</p></div>
-          <div class="grid gap-2"><div class="flex items-center justify-between"><label for="key" class="text-sm font-medium">API Key</label><span class="text-xs text-muted-foreground">默认保存到本地数据库</span></div><input id="key" type="password" autocomplete="off" placeholder="原型占位，勿输入真实密钥" class="h-11 w-full rounded-lg border bg-background px-3 text-base sm:text-sm"><p class="text-xs leading-5 text-muted-foreground">产品中只显示凭据状态。留空保留，填写新值替换；更换地址需重新配置 Key。</p></div>
-          <details class="rounded-lg border bg-background px-4 py-3"><summary class="min-h-7 text-sm font-medium">高级设置</summary><div class="mt-4 grid gap-4 sm:grid-cols-2"><div class="grid gap-2"><label for="timeout" class="text-xs text-muted-foreground">请求超时（秒）</label><input id="timeout" type="number" min="1" max="600" value="120" class="h-11 w-full rounded-md border bg-card px-3"></div><div class="grid gap-2"><label for="thinking" class="text-xs text-muted-foreground">思考模式 · 随模型能力调整</label><select id="thinking" class="h-11 rounded-md border bg-card px-3"><option>关闭 · 摘要推荐</option><option>开启</option><option>由模型决定</option></select></div></div></details>
-          <div id="diagnostics" hidden class="rounded-lg border border-[#d5e0cc] bg-[#edf2e8] p-4 text-sm text-[#4d6542]" role="status">示例检查结果：地址可达 → 认证通过 → 模型调用通过。耗时 820 ms。</div>
-          <div class="flex flex-wrap items-center justify-between gap-4 border-t pt-5"><button type="button" id="test" class="min-h-11 rounded-lg border bg-card px-4 text-sm hover:bg-secondary">测试连接</button><div class="flex gap-2"><button type="button" id="reset" class="min-h-11 rounded-lg px-4 text-sm text-muted-foreground hover:bg-secondary">放弃修改</button><button type="submit" class="min-h-11 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90">保存连接</button></div></div>
-        </form>
-
-        <div id="panel-models" role="tabpanel" aria-labelledby="tab-models" hidden class="px-6 py-7 md:px-8">
-          <div class="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-sm font-semibold">选择生成模型</h3><p class="mt-1 text-xs text-muted-foreground">列表来自预设或服务商查询，支持手动添加模型 ID。</p></div><button id="discover" class="min-h-11 rounded-lg border px-4 text-sm hover:bg-secondary">获取模型</button></div>
-          <label for="model-search" class="sr-only">搜索模型</label><input id="model-search" class="mb-4 h-11 w-full rounded-lg border bg-background px-3 text-sm" placeholder="搜索模型名称或 ID…">
-          <div id="models" class="grid gap-3"></div>
-          <form id="manual-model" class="mt-6 flex gap-2 border-t pt-5"><label for="model-id" class="sr-only">手动添加模型 ID</label><input id="model-id" required class="h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 font-mono text-sm" placeholder="输入准确的模型 ID"><button class="min-h-11 shrink-0 rounded-lg border px-4 text-sm hover:bg-secondary">添加模型</button></form>
-        </div>
+        <span class="rounded-full bg-[#edf2e8] px-3 py-1 text-xs text-[#4d6542]"
+          >已配置 · 下次生成使用</span
+        >
       </section>
-    </div>
-    <footer class="mt-10 flex flex-wrap justify-between gap-3 border-t pt-5 text-xs text-muted-foreground"><span>Daily Signal · 把信息留给机器，把思考留给你。</span><a href="provider-management.md" class="underline underline-offset-4">查看完整方案与边界</a></footer>
-  </main>
 
-  <dialog id="catalog" aria-labelledby="catalog-title" class="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/30 sm:p-8">
-    <div class="mb-6 flex items-start justify-between gap-4"><div><p class="mb-2 text-xs tracking-widest text-primary">ADD A CONNECTION</p><h2 id="catalog-title" class="font-serif text-3xl font-semibold">选择你的服务商</h2><p class="mt-2 text-sm text-muted-foreground">选一个预设开始，地址与协议会自动填好。</p></div><button id="close" class="grid size-11 shrink-0 place-items-center rounded-lg border text-xl" aria-label="关闭服务商选择">×</button></div>
-    <div id="presets" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
-    <p class="mt-6 text-xs leading-6 text-muted-foreground">第三方网关选择对应协议，图标只代表服务商品牌。订阅账号可通过已部署的网关接入。</p>
-  </dialog>
-  <div id="toast" hidden role="status" class="fixed right-5 bottom-5 left-5 mx-auto max-w-lg rounded-xl border bg-foreground px-5 py-4 text-sm text-background shadow-lg"></div>
+      <div class="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+        <aside class="min-w-0">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-xs font-semibold tracking-wider text-muted-foreground">我的连接</h2>
+            <span id="count" class="text-xs text-muted-foreground"></span>
+          </div>
+          <label class="sr-only" for="search">搜索连接</label>
+          <input
+            id="search"
+            class="mb-4 h-11 w-full rounded-lg border bg-card px-3 text-sm"
+            placeholder="搜索服务商或连接…"
+          />
+          <nav id="connections" class="grid gap-2" aria-label="已保存的模型连接"></nav>
+          <p class="mt-6 px-2 text-xs leading-6 text-muted-foreground">
+            同一服务商可添加多套连接，分别保存地址、凭据与模型。
+          </p>
+        </aside>
 
-  <script>
-    const presets = [
-      { brand: 'DeepSeek', icon: 'deepseek-color', endpoint: 'https://api.deepseek.com', protocol: 'OpenAI Chat Completions', models: ['deepseek-chat', 'deepseek-reasoner'] },
-      { brand: 'OpenAI', icon: 'openai', endpoint: 'https://api.openai.com/v1', protocol: 'OpenAI Responses', models: ['gpt-4.1-mini', 'gpt-4.1'] },
-      { brand: 'Anthropic', icon: 'anthropic', endpoint: 'https://api.anthropic.com/v1', protocol: 'Anthropic Messages', models: ['claude-sonnet-4-5'] },
-      { brand: 'Google Gemini', icon: 'gemini-color', endpoint: 'https://generativelanguage.googleapis.com/v1beta', protocol: 'Google Gemini', models: ['gemini-2.5-flash'] },
-      { brand: 'OpenRouter', icon: 'openrouter', endpoint: 'https://openrouter.ai/api/v1', protocol: 'OpenAI Chat Completions', models: ['anthropic/claude-sonnet-4.5', 'openai/gpt-4.1-mini'] },
-      { brand: '百炼', icon: 'bailian-color', endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1', protocol: 'OpenAI Chat Completions', models: ['qwen-plus'] },
-      { brand: 'Moonshot', icon: 'moonshot', endpoint: 'https://api.moonshot.cn/v1', protocol: 'OpenAI Chat Completions', models: ['kimi-k2'] },
-      { brand: '智谱', icon: 'zhipu-color', endpoint: 'https://open.bigmodel.cn/api/paas/v4', protocol: 'OpenAI Chat Completions', models: ['glm-4.5'] },
-      { brand: '硅基流动', icon: 'siliconcloud-color', endpoint: 'https://api.siliconflow.cn/v1', protocol: 'OpenAI Chat Completions', models: ['deepseek-ai/DeepSeek-V3'] },
-      { brand: '自定义网关', icon: null, endpoint: '', protocol: 'OpenAI Chat Completions', models: [] },
-    ];
-    // Illustrative model IDs only: the product will use model discovery and editable IDs.
-    const connections = presets.slice(0, 5).map((preset, id) => ({ ...preset, models: [...preset.models], id, name: preset.brand + (id === 0 ? ' · 个人' : ''), tested: false }));
-    let selected = 0, defaultConnection = 0, defaultModel = 'deepseek-chat', toastTimer;
-    const $ = (id) => document.getElementById(id);
-    const icon = (name, size = 'size-6') => name ? '<img src="assets/providers/' + name + '.svg" alt="" class="' + size + '" width="24" height="24">' : '<span aria-hidden="true" class="text-xl">◇</span>';
-    function message(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true, 4000); }
-    function renderConnections() {
-      $('count').textContent = connections.length + ' 个'; $('connections').replaceChildren();
-      for (const connection of connections.filter(c => c.name.toLowerCase().includes($('search').value.toLowerCase()))) {
+        <section
+          class="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm"
+          aria-labelledby="connection-title"
+        >
+          <div class="border-b px-6 py-6 md:px-8">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <span
+                  id="connection-icon"
+                  class="grid size-12 place-items-center rounded-xl border bg-background"
+                ></span>
+                <div>
+                  <h2 id="connection-title" class="font-serif text-2xl font-semibold"></h2>
+                  <p id="connection-description" class="mt-1 text-xs text-muted-foreground"></p>
+                </div>
+              </div>
+              <span
+                id="status"
+                class="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground"
+                >尚未测试</span
+              >
+            </div>
+            <div class="mt-6 flex gap-6" role="tablist" aria-label="连接设置">
+              <button
+                id="tab-connection"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-connection"
+                class="min-h-11 border-b-2 border-primary px-1 text-sm font-medium text-primary"
+              >
+                连接配置
+              </button>
+              <button
+                id="tab-models"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-models"
+                tabindex="-1"
+                class="min-h-11 border-b-2 border-transparent px-1 text-sm text-muted-foreground"
+              >
+                可用模型
+              </button>
+            </div>
+          </div>
+
+          <form
+            id="panel-connection"
+            role="tabpanel"
+            aria-labelledby="tab-connection"
+            class="grid gap-6 px-6 py-7 md:px-8"
+          >
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div class="grid gap-2">
+                <label for="name" class="text-sm font-medium">连接名称</label
+                ><input
+                  id="name"
+                  required
+                  class="h-11 min-w-0 rounded-lg border bg-background px-3 text-base sm:text-sm"
+                />
+              </div>
+              <div class="grid gap-2">
+                <label for="protocol" class="text-sm font-medium">接口协议</label
+                ><select
+                  id="protocol"
+                  class="h-11 min-w-0 rounded-lg border bg-background px-3 text-base sm:text-sm"
+                >
+                  <option>OpenAI Chat Completions</option>
+                  <option>OpenAI Responses</option>
+                  <option>Anthropic Messages</option>
+                  <option>Google Gemini</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid gap-2">
+              <label for="endpoint" class="text-sm font-medium">API 地址</label
+              ><input
+                id="endpoint"
+                type="url"
+                required
+                class="h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-mono text-sm"
+              />
+              <p class="text-xs leading-5 text-muted-foreground">
+                已填入服务商默认地址。使用网关时，改为网关提供的 API 根地址。
+              </p>
+            </div>
+            <div class="grid gap-2">
+              <div class="flex items-center justify-between">
+                <label for="key" class="text-sm font-medium">API Key</label
+                ><span class="text-xs text-muted-foreground">默认保存到本地数据库</span>
+              </div>
+              <input
+                id="key"
+                type="password"
+                autocomplete="off"
+                placeholder="原型占位，勿输入真实密钥"
+                class="h-11 w-full rounded-lg border bg-background px-3 text-base sm:text-sm"
+              />
+              <p class="text-xs leading-5 text-muted-foreground">
+                产品中只显示凭据状态。留空保留，填写新值替换；更换地址需重新配置 Key。
+              </p>
+            </div>
+            <details class="rounded-lg border bg-background px-4 py-3">
+              <summary class="min-h-7 text-sm font-medium">高级设置</summary>
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-2">
+                  <label for="timeout" class="text-xs text-muted-foreground">请求超时（秒）</label
+                  ><input
+                    id="timeout"
+                    type="number"
+                    min="1"
+                    max="600"
+                    value="120"
+                    class="h-11 w-full rounded-md border bg-card px-3"
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <label for="thinking" class="text-xs text-muted-foreground"
+                    >思考模式 · 随模型能力调整</label
+                  ><select id="thinking" class="h-11 rounded-md border bg-card px-3">
+                    <option>关闭 · 摘要推荐</option>
+                    <option>开启</option>
+                    <option>由模型决定</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+            <div
+              id="diagnostics"
+              hidden
+              class="rounded-lg border border-[#d5e0cc] bg-[#edf2e8] p-4 text-sm text-[#4d6542]"
+              role="status"
+            >
+              示例检查结果：地址可达 → 认证通过 → 模型调用通过。耗时 820 ms。
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-4 border-t pt-5">
+              <button
+                type="button"
+                id="test"
+                class="min-h-11 rounded-lg border bg-card px-4 text-sm hover:bg-secondary"
+              >
+                测试连接
+              </button>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  id="reset"
+                  class="min-h-11 rounded-lg px-4 text-sm text-muted-foreground hover:bg-secondary"
+                >
+                  放弃修改</button
+                ><button
+                  type="submit"
+                  class="min-h-11 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  保存连接
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div
+            id="panel-models"
+            role="tabpanel"
+            aria-labelledby="tab-models"
+            hidden
+            class="px-6 py-7 md:px-8"
+          >
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold">选择生成模型</h3>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  列表来自预设或服务商查询，支持手动添加模型 ID。
+                </p>
+              </div>
+              <button
+                id="discover"
+                class="min-h-11 rounded-lg border px-4 text-sm hover:bg-secondary"
+              >
+                获取模型
+              </button>
+            </div>
+            <label for="model-search" class="sr-only">搜索模型</label
+            ><input
+              id="model-search"
+              class="mb-4 h-11 w-full rounded-lg border bg-background px-3 text-sm"
+              placeholder="搜索模型名称或 ID…"
+            />
+            <div id="models" class="grid gap-3"></div>
+            <form id="manual-model" class="mt-6 flex gap-2 border-t pt-5">
+              <label for="model-id" class="sr-only">手动添加模型 ID</label
+              ><input
+                id="model-id"
+                required
+                class="h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 font-mono text-sm"
+                placeholder="输入准确的模型 ID"
+              /><button class="min-h-11 shrink-0 rounded-lg border px-4 text-sm hover:bg-secondary">
+                添加模型
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+      <footer
+        class="mt-10 flex flex-wrap justify-between gap-3 border-t pt-5 text-xs text-muted-foreground"
+      >
+        <span>Daily Signal · 把信息留给机器，把思考留给你。</span
+        ><a href="provider-management.md" class="underline underline-offset-4"
+          >查看完整方案与边界</a
+        >
+      </footer>
+    </main>
+
+    <dialog
+      id="catalog"
+      aria-labelledby="catalog-title"
+      class="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/30 sm:p-8"
+    >
+      <div class="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p class="mb-2 text-xs tracking-widest text-primary">ADD A CONNECTION</p>
+          <h2 id="catalog-title" class="font-serif text-3xl font-semibold">选择你的服务商</h2>
+          <p class="mt-2 text-sm text-muted-foreground">选一个预设开始，地址与协议会自动填好。</p>
+        </div>
+        <button
+          id="close"
+          class="grid size-11 shrink-0 place-items-center rounded-lg border text-xl"
+          aria-label="关闭服务商选择"
+        >
+          ×
+        </button>
+      </div>
+      <div id="presets" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+      <p class="mt-6 text-xs leading-6 text-muted-foreground">
+        第三方网关选择对应协议，图标只代表服务商品牌。订阅账号可通过已部署的网关接入。
+      </p>
+    </dialog>
+    <div
+      id="toast"
+      hidden
+      role="status"
+      class="fixed right-5 bottom-5 left-5 mx-auto max-w-lg rounded-xl border bg-foreground px-5 py-4 text-sm text-background shadow-lg"
+    ></div>
+
+    <script>
+      const presets = [
+        {
+          brand: 'DeepSeek',
+          icon: 'deepseek-color',
+          endpoint: 'https://api.deepseek.com',
+          protocol: 'OpenAI Chat Completions',
+          models: ['deepseek-chat', 'deepseek-reasoner'],
+        },
+        {
+          brand: 'OpenAI',
+          icon: 'openai',
+          endpoint: 'https://api.openai.com/v1',
+          protocol: 'OpenAI Responses',
+          models: ['gpt-4.1-mini', 'gpt-4.1'],
+        },
+        {
+          brand: 'Anthropic',
+          icon: 'anthropic',
+          endpoint: 'https://api.anthropic.com/v1',
+          protocol: 'Anthropic Messages',
+          models: ['claude-sonnet-4-5'],
+        },
+        {
+          brand: 'Google Gemini',
+          icon: 'gemini-color',
+          endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+          protocol: 'Google Gemini',
+          models: ['gemini-2.5-flash'],
+        },
+        {
+          brand: 'OpenRouter',
+          icon: 'openrouter',
+          endpoint: 'https://openrouter.ai/api/v1',
+          protocol: 'OpenAI Chat Completions',
+          models: ['anthropic/claude-sonnet-4.5', 'openai/gpt-4.1-mini'],
+        },
+        {
+          brand: '百炼',
+          icon: 'bailian-color',
+          endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+          protocol: 'OpenAI Chat Completions',
+          models: ['qwen-plus'],
+        },
+        {
+          brand: 'Moonshot',
+          icon: 'moonshot',
+          endpoint: 'https://api.moonshot.cn/v1',
+          protocol: 'OpenAI Chat Completions',
+          models: ['kimi-k2'],
+        },
+        {
+          brand: '智谱',
+          icon: 'zhipu-color',
+          endpoint: 'https://open.bigmodel.cn/api/paas/v4',
+          protocol: 'OpenAI Chat Completions',
+          models: ['glm-4.5'],
+        },
+        {
+          brand: '硅基流动',
+          icon: 'siliconcloud-color',
+          endpoint: 'https://api.siliconflow.cn/v1',
+          protocol: 'OpenAI Chat Completions',
+          models: ['deepseek-ai/DeepSeek-V3'],
+        },
+        {
+          brand: '自定义网关',
+          icon: null,
+          endpoint: '',
+          protocol: 'OpenAI Chat Completions',
+          models: [],
+        },
+      ];
+      // Illustrative model IDs only: the product will use model discovery and editable IDs.
+      const connections = presets.slice(0, 5).map((preset, id) => ({
+        ...preset,
+        models: [...preset.models],
+        id,
+        name: preset.brand + (id === 0 ? ' · 个人' : ''),
+        tested: false,
+      }));
+      let selected = 0,
+        defaultConnection = 0,
+        defaultModel = 'deepseek-chat',
+        toastTimer;
+      const $ = (id) => document.getElementById(id);
+      const icon = (name, size = 'size-6') =>
+        name
+          ? '<img src="assets/providers/' +
+            name +
+            '.svg" alt="" class="' +
+            size +
+            '" width="24" height="24">'
+          : '<span aria-hidden="true" class="text-xl">◇</span>';
+      function message(text) {
+        $('toast').textContent = text;
+        $('toast').hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => ($('toast').hidden = true), 4000);
+      }
+      function renderConnections() {
+        $('count').textContent = connections.length + ' 个';
+        $('connections').replaceChildren();
+        for (const connection of connections.filter((c) =>
+          c.name.toLowerCase().includes($('search').value.toLowerCase()),
+        )) {
+          const button = document.createElement('button');
+          button.className =
+            'flex min-h-16 w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ' +
+            (connection.id === selected
+              ? 'border-primary/30 bg-card text-primary shadow-sm'
+              : 'border-transparent text-foreground hover:bg-secondary');
+          button.setAttribute('aria-current', connection.id === selected ? 'true' : 'false');
+          button.innerHTML = icon(connection.icon);
+          const labels = document.createElement('span');
+          labels.className = 'min-w-0 flex-1';
+          const name = document.createElement('span');
+          name.className = 'block truncate text-sm font-medium';
+          name.textContent = connection.name;
+          const detail = document.createElement('span');
+          detail.className = 'mt-1 block text-xs text-muted-foreground';
+          detail.textContent =
+            connection.models.length +
+            ' 个模型' +
+            (connection.id === defaultConnection ? ' · 默认使用' : '');
+          labels.append(name, detail);
+          button.append(labels);
+          button.onclick = () => select(connection.id);
+          $('connections').append(button);
+        }
+        if (!$('connections').children.length) $('connections').textContent = '未找到匹配的连接。';
+      }
+      function renderModels() {
+        const connection = connections[selected];
+        $('models').replaceChildren();
+        for (const model of connection.models.filter((m) =>
+          m.toLowerCase().includes($('model-search').value.toLowerCase()),
+        )) {
+          const row = document.createElement('div');
+          row.className = 'flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4';
+          const labels = document.createElement('div');
+          labels.className = 'min-w-0';
+          const title = document.createElement('p');
+          title.className = 'wrap-anywhere font-mono text-sm font-medium';
+          title.textContent = model;
+          const detail = document.createElement('p');
+          detail.className = 'mt-2 text-xs text-muted-foreground';
+          detail.textContent = '文本生成 · 示例模型';
+          labels.append(title, detail);
+          const button = document.createElement('button');
+          const current = selected === defaultConnection && model === defaultModel;
+          button.className =
+            'min-h-11 rounded-lg border px-4 text-xs ' +
+            (current ? 'border-primary/30 bg-primary/5 text-primary' : 'hover:bg-secondary');
+          button.textContent = current ? '✓ 默认模型' : '设为默认';
+          button.disabled = current;
+          button.onclick = () => {
+            defaultConnection = selected;
+            defaultModel = model;
+            renderDefault();
+            renderConnections();
+            renderModels();
+            message('示例：下次日报将使用 ' + model);
+          };
+          row.append(labels, button);
+          $('models').append(row);
+        }
+        if (!$('models').children.length)
+          $('models').textContent = '没有匹配的模型，可以在下方手动添加。';
+      }
+      function renderDefault() {
+        $('default-icon').innerHTML = icon(connections[defaultConnection].icon);
+        $('default-model').textContent = defaultModel + ' / ' + connections[defaultConnection].name;
+      }
+      function select(id) {
+        selected = id;
+        const c = connections[id];
+        $('connection-title').textContent = c.name;
+        $('connection-description').textContent = c.brand + ' / ' + c.protocol;
+        $('connection-icon').innerHTML = icon(c.icon);
+        $('name').value = c.name;
+        $('endpoint').value = c.endpoint;
+        $('protocol').value = c.protocol;
+        $('key').value = '';
+        $('status').textContent = c.tested ? '示例测试通过' : '尚未测试';
+        $('diagnostics').hidden = !c.tested;
+        $('model-search').value = '';
+        renderConnections();
+        renderModels();
+      }
+      function selectTab(name) {
+        for (const tab of ['connection', 'models']) {
+          const active = tab === name;
+          $('panel-' + tab).hidden = !active;
+          $('tab-' + tab).setAttribute('aria-selected', String(active));
+          $('tab-' + tab).tabIndex = active ? 0 : -1;
+          $('tab-' + tab).className =
+            'min-h-11 border-b-2 px-1 text-sm ' +
+            (active
+              ? 'border-primary font-medium text-primary'
+              : 'border-transparent text-muted-foreground');
+        }
+      }
+      for (const tab of ['connection', 'models']) {
+        $('tab-' + tab).onclick = () => selectTab(tab);
+        $('tab-' + tab).onkeydown = (event) => {
+          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const next =
+              event.key === 'Home'
+                ? 'connection'
+                : event.key === 'End'
+                  ? 'models'
+                  : tab === 'connection'
+                    ? 'models'
+                    : 'connection';
+            selectTab(next);
+            $('tab-' + next).focus();
+          }
+        };
+      }
+      $('search').oninput = renderConnections;
+      $('model-search').oninput = renderModels;
+      $('reset').onclick = () => {
+        select(selected);
+        message('已恢复示例连接配置。');
+      };
+      $('panel-connection').onsubmit = (event) => {
+        event.preventDefault();
+        Object.assign(connections[selected], {
+          name: $('name').value,
+          endpoint: $('endpoint').value,
+          protocol: $('protocol').value,
+          tested: false,
+        });
+        select(selected);
+        renderDefault();
+        message('已更新本次原型会话；刷新页面会恢复示例。');
+      };
+      $('test').onclick = () => {
+        connections[selected].tested = true;
+        $('status').textContent = '示例测试通过';
+        $('diagnostics').hidden = false;
+      };
+      $('discover').onclick = () =>
+        message('原型展示：正式产品会查询当前连接，查询失败仍可手动添加模型。');
+      $('manual-model').onsubmit = (event) => {
+        event.preventDefault();
+        const value = $('model-id').value.trim();
+        if (value && !connections[selected].models.includes(value))
+          connections[selected].models.push(value);
+        $('model-id').value = '';
+        renderModels();
+        renderConnections();
+      };
+      $('add').onclick = () => $('catalog').showModal();
+      $('close').onclick = () => $('catalog').close();
+      for (const preset of presets) {
         const button = document.createElement('button');
-        button.className = 'flex min-h-16 w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ' + (connection.id === selected ? 'border-primary/30 bg-card text-primary shadow-sm' : 'border-transparent text-foreground hover:bg-secondary');
-        button.setAttribute('aria-current', connection.id === selected ? 'true' : 'false');
-        button.innerHTML = icon(connection.icon);
-        const labels = document.createElement('span'); labels.className = 'min-w-0 flex-1';
-        const name = document.createElement('span'); name.className = 'block truncate text-sm font-medium'; name.textContent = connection.name;
-        const detail = document.createElement('span'); detail.className = 'mt-1 block text-xs text-muted-foreground'; detail.textContent = connection.models.length + ' 个模型' + (connection.id === defaultConnection ? ' · 默认使用' : '');
-        labels.append(name, detail); button.append(labels); button.onclick = () => select(connection.id); $('connections').append(button);
+        button.className =
+          'flex min-h-28 flex-col items-start gap-4 rounded-xl border bg-background p-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-primary/5';
+        button.innerHTML = icon(preset.icon);
+        const label = document.createElement('span');
+        label.textContent = preset.brand;
+        button.append(label);
+        button.onclick = () => {
+          const id = connections.length;
+          connections.push({
+            ...preset,
+            models: [...preset.models],
+            id,
+            name: preset.brand + ' · 新连接',
+            tested: false,
+          });
+          $('search').value = '';
+          select(id);
+          selectTab('connection');
+          $('catalog').close();
+          $('name').focus();
+        };
+        $('presets').append(button);
       }
-      if (!$('connections').children.length) $('connections').textContent = '未找到匹配的连接。';
-    }
-    function renderModels() {
-      const connection = connections[selected]; $('models').replaceChildren();
-      for (const model of connection.models.filter(m => m.toLowerCase().includes($('model-search').value.toLowerCase()))) {
-        const row = document.createElement('div'); row.className = 'flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4';
-        const labels = document.createElement('div'); labels.className = 'min-w-0';
-        const title = document.createElement('p'); title.className = 'wrap-anywhere font-mono text-sm font-medium'; title.textContent = model;
-        const detail = document.createElement('p'); detail.className = 'mt-2 text-xs text-muted-foreground'; detail.textContent = '文本生成 · 示例模型'; labels.append(title, detail);
-        const button = document.createElement('button'); const current = selected === defaultConnection && model === defaultModel;
-        button.className = 'min-h-11 rounded-lg border px-4 text-xs ' + (current ? 'border-primary/30 bg-primary/5 text-primary' : 'hover:bg-secondary');
-        button.textContent = current ? '✓ 默认模型' : '设为默认'; button.disabled = current;
-        button.onclick = () => { defaultConnection = selected; defaultModel = model; renderDefault(); renderConnections(); renderModels(); message('示例：下次日报将使用 ' + model); };
-        row.append(labels, button); $('models').append(row);
-      }
-      if (!$('models').children.length) $('models').textContent = '没有匹配的模型，可以在下方手动添加。';
-    }
-    function renderDefault() { $('default-icon').innerHTML = icon(connections[defaultConnection].icon); $('default-model').textContent = defaultModel + ' / ' + connections[defaultConnection].name; }
-    function select(id) {
-      selected = id; const c = connections[id]; $('connection-title').textContent = c.name; $('connection-description').textContent = c.brand + ' / ' + c.protocol;
-      $('connection-icon').innerHTML = icon(c.icon); $('name').value = c.name; $('endpoint').value = c.endpoint; $('protocol').value = c.protocol; $('key').value = '';
-      $('status').textContent = c.tested ? '示例测试通过' : '尚未测试'; $('diagnostics').hidden = !c.tested;
-      $('model-search').value = ''; renderConnections(); renderModels();
-    }
-    function selectTab(name) {
-      for (const tab of ['connection', 'models']) { const active = tab === name; $('panel-' + tab).hidden = !active; $('tab-' + tab).setAttribute('aria-selected', String(active)); $('tab-' + tab).tabIndex = active ? 0 : -1; $('tab-' + tab).className = 'min-h-11 border-b-2 px-1 text-sm ' + (active ? 'border-primary font-medium text-primary' : 'border-transparent text-muted-foreground'); }
-    }
-    for (const tab of ['connection', 'models']) {
-      $('tab-' + tab).onclick = () => selectTab(tab);
-      $('tab-' + tab).onkeydown = event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 'connection' : event.key === 'End' ? 'models' : tab === 'connection' ? 'models' : 'connection'; selectTab(next); $('tab-' + next).focus(); } };
-    }
-    $('search').oninput = renderConnections; $('model-search').oninput = renderModels;
-    $('reset').onclick = () => { select(selected); message('已恢复示例连接配置。'); };
-    $('panel-connection').onsubmit = event => { event.preventDefault(); Object.assign(connections[selected], { name: $('name').value, endpoint: $('endpoint').value, protocol: $('protocol').value, tested: false }); select(selected); renderDefault(); message('已更新本次原型会话；刷新页面会恢复示例。'); };
-    $('test').onclick = () => { connections[selected].tested = true; $('status').textContent = '示例测试通过'; $('diagnostics').hidden = false; };
-    $('discover').onclick = () => message('原型展示：正式产品会查询当前连接，查询失败仍可手动添加模型。');
-    $('manual-model').onsubmit = event => { event.preventDefault(); const value = $('model-id').value.trim(); if (value && !connections[selected].models.includes(value)) connections[selected].models.push(value); $('model-id').value = ''; renderModels(); renderConnections(); };
-    $('add').onclick = () => $('catalog').showModal(); $('close').onclick = () => $('catalog').close();
-    for (const preset of presets) { const button = document.createElement('button'); button.className = 'flex min-h-28 flex-col items-start gap-4 rounded-xl border bg-background p-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-primary/5'; button.innerHTML = icon(preset.icon); const label = document.createElement('span'); label.textContent = preset.brand; button.append(label); button.onclick = () => { const id = connections.length; connections.push({ ...preset, models: [...preset.models], id, name: preset.brand + ' · 新连接', tested: false }); $('search').value = ''; select(id); selectTab('connection'); $('catalog').close(); $('name').focus(); }; $('presets').append(button); }
-    renderDefault(); select(0);
-  </script>
-</body>
+      renderDefault();
+      select(0);
+    </script>
+  </body>
 </html>

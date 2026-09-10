@@ -42,8 +42,10 @@ test('provider key persists privately, survives template edits, can be replaced 
   const { providerCredentials, providerModels, settings } =
     await import('../infrastructure/database/schema');
   const initial = await rpc.state();
-  const defaultModelId = db.select({ id: settings.defaultProviderModelId }).from(settings).get()!
-    .id!;
+  const defaultModelId = db
+    .select({ id: settings.defaultProviderModelId })
+    .from(settings)
+    .get()!.id!;
   const providerId = db
     .select({ id: providerModels.providerId })
     .from(providerModels)

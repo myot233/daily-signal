@@ -14,11 +14,11 @@
 
 明确区分三个概念：
 
-| 概念 | 例子 | 保存在哪里 |
-| --- | --- | --- |
-| 服务商预设 | OpenAI、DeepSeek、Anthropic、百炼、自定义网关 | 版本化的代码 registry，提供品牌、默认地址和可选协议 |
-| 连接 | “DeepSeek · 个人”“OpenAI · 工作”“我的 sub2api” | SQLite，每条拥有独立名称、地址、协议、凭据与参数 |
-| 模型 | 某条连接下的准确 model ID，以及可选显示名和能力 | SQLite，关联具体连接 |
+| 概念       | 例子                                            | 保存在哪里                                          |
+| ---------- | ----------------------------------------------- | --------------------------------------------------- |
+| 服务商预设 | OpenAI、DeepSeek、Anthropic、百炼、自定义网关   | 版本化的代码 registry，提供品牌、默认地址和可选协议 |
+| 连接       | “DeepSeek · 个人”“OpenAI · 工作”“我的 sub2api”  | SQLite，每条拥有独立名称、地址、协议、凭据与参数    |
+| 模型       | 某条连接下的准确 model ID，以及可选显示名和能力 | SQLite，关联具体连接                                |
 
 同一个品牌允许多条连接；同一个模型 ID 可以出现在不同连接。协议独立于品牌，例如网关暴露 Anthropic Messages 时，不能仅因它提供 Claude 就使用 OpenAI Chat Completions。
 
@@ -50,17 +50,17 @@
 
 “支持”必须同时具备：可配置、可保存、可测试、可生成、错误可理解。仅有品牌图标或预设不算完成支持。
 
-| 阶段 | 支持目标 | 接入方式与边界 |
-| --- | --- | --- |
-| 第一阶段 | OpenAI 官方 | Responses 与 Chat Completions 显式区分；迁移旧连接时保留 Chat Completions |
-| 第一阶段 | Anthropic、Google Gemini | 原生 Messages / Gemini 适配器；各自处理认证头、路径和输出限制 |
-| 第一阶段 | DeepSeek | OpenAI-compatible 加独立思考参数映射；延续现有默认关闭策略 |
+| 阶段     | 支持目标                                   | 接入方式与边界                                                                             |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| 第一阶段 | OpenAI 官方                                | Responses 与 Chat Completions 显式区分；迁移旧连接时保留 Chat Completions                  |
+| 第一阶段 | Anthropic、Google Gemini                   | 原生 Messages / Gemini 适配器；各自处理认证头、路径和输出限制                              |
+| 第一阶段 | DeepSeek                                   | OpenAI-compatible 加独立思考参数映射；延续现有默认关闭策略                                 |
 | 第一阶段 | 百炼、Moonshot、智谱、硅基流动、OpenRouter | 已提供预设地址、图标与 OpenAI Chat Completions 兼容适配；地区/Coding Plan 独立预设尚未实现 |
-| 第一阶段 | 自定义网关、已部署的 sub2api | 地址 + API Key + 实际对外协议；支持网关提供的模型 ID |
-| 第二阶段 | Ollama、LM Studio | 独立的本地连接类型；明确本机地址、端口、是否需要认证；保留公开网络连接的原有边界 |
-| 第二阶段 | 更多厂商与 MiniMax 等专用端点 | 按实际协议和模型参数增加适配，不凭品牌名猜测；同厂商不同端点可用不同预设 |
-| 第三阶段 | 可直接授权的订阅/OAuth 账户 | 独立认证模块，包含授权回调、状态校验、token 更新与撤销；只开放已验证的服务 |
-| 后续按需 | Azure OpenAI、Bedrock、Vertex AI | 具有部署名、地区或云身份字段的专用适配器，不能伪装成一个通用 Key 表单 |
+| 第一阶段 | 自定义网关、已部署的 sub2api               | 地址 + API Key + 实际对外协议；支持网关提供的模型 ID                                       |
+| 第二阶段 | Ollama、LM Studio                          | 独立的本地连接类型；明确本机地址、端口、是否需要认证；保留公开网络连接的原有边界           |
+| 第二阶段 | 更多厂商与 MiniMax 等专用端点              | 按实际协议和模型参数增加适配，不凭品牌名猜测；同厂商不同端点可用不同预设                   |
+| 第三阶段 | 可直接授权的订阅/OAuth 账户                | 独立认证模块，包含授权回调、状态校验、token 更新与撤销；只开放已验证的服务                 |
+| 后续按需 | Azure OpenAI、Bedrock、Vertex AI           | 具有部署名、地区或云身份字段的专用适配器，不能伪装成一个通用 Key 表单                      |
 
 用户已有的订阅账户可以先经现成 sub2api 网关接入。直接登录订阅账号涉及独立的协议和认证适配，不能把网页 Cookie 或 CLI token 填进 API Key 后就宣称支持。
 
@@ -118,7 +118,7 @@ server/
 
 `rpc/router.ts` 只组合接口，不直接操作数据库。数据库客户端仅导出 `db` / `sqlite`；业务查询放在对应模块，`state/service.ts` 负责聚合。RSS/OPML 解析不访问数据库或网络。共享契约仍放在 `shared/`，前端不依赖后端实现。
 
-后端统一使用 Prettier（单引号、100 列、尾逗号），配置位于 `server/.prettierrc.json`。`pnpm format:server` 格式化后端；`pnpm check` 依次检查后端格式、Oxlint、类型及递归发现的后端测试。`pnpm build` 和 `pnpm db:migrate` 的入口命令保持不变。
+全仓统一使用 Oxfmt（单引号、100 列、尾逗号），配置位于根目录 `.oxfmtrc.json`。pre-commit hook 会格式化暂存文件；`pnpm format` 格式化全仓，`pnpm check` 依次检查全仓格式、Oxlint、类型及递归发现的后端测试。`pnpm build` 和 `pnpm db:migrate` 的入口命令保持不变。
 
 registry 只提供默认值，升级预设时不覆盖用户保存的 URL、模型或参数。模型 ID 始终是可输入的字符串；静态目录仅提供建议，不能成为拒绝新模型的枚举。
 
@@ -132,13 +132,13 @@ registry 只提供默认值，升级预设时不覆盖用户保存的 URL、模�
 
 ## 数据模型与持久化
 
-| 表/配置 | 关键字段 | 约束 |
-| --- | --- | --- |
-| `providers` | id、presetId、name、protocol、baseUrl、enabled、options、revision、createdAt、updatedAt | 多连接；revision 用于检测并发修改；options 按协议验证 |
-| `provider_credentials` | providerId、apiKey、updatedAt | 仅服务端读取，一条连接一份凭据；不进入公共 settings JSON |
-| `provider_models` | id、providerId、modelId、displayName、enabled、capabilities、options、source | 唯一约束 `(providerId, modelId)`；source 标记手动/查询/预设 |
-| 应用设置 | defaultProviderModelId、template | 默认模型外键引用；更新与删除在事务中维护一致性 |
-| `provider_checks` | providerId、modelId、configRevision、stage、status、latencyMs、checkedAt、safeError | 测试结果绑定配置版本，避免把过期结果显示为当前健康状态 |
+| 表/配置                | 关键字段                                                                                | 约束                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `providers`            | id、presetId、name、protocol、baseUrl、enabled、options、revision、createdAt、updatedAt | 多连接；revision 用于检测并发修改；options 按协议验证       |
+| `provider_credentials` | providerId、apiKey、updatedAt                                                           | 仅服务端读取，一条连接一份凭据；不进入公共 settings JSON    |
+| `provider_models`      | id、providerId、modelId、displayName、enabled、capabilities、options、source            | 唯一约束 `(providerId, modelId)`；source 标记手动/查询/预设 |
+| 应用设置               | defaultProviderModelId、template                                                        | 默认模型外键引用；更新与删除在事务中维护一致性              |
+| `provider_checks`      | providerId、modelId、configRevision、stage、status、latencyMs、checkedAt、safeError     | 测试结果绑定配置版本，避免把过期结果显示为当前健康状态      |
 
 数据库是唯一持久化来源。React 本地状态只保存未提交草稿；客户端只接收无密钥的公共响应。
 
@@ -162,19 +162,19 @@ API Key 默认入库。公共响应只返回 `hasCredential` 等状态，密码�
 
 已从 `@lobehub/icons-static-svg@1.95.0` 选取 SVG，保留 MIT 声明，放在 `docs/assets/providers/`。`ProviderIcon` 通过静态白名单导入生产构建；图标不会按用户输入动态拼接远程 URL，也不会运行时从 CDN 拉取。Lobe 官方提供 React 与静态 SVG 等使用方式。[图标资源说明](assets/providers/README.md)
 
-| 对象 | 服务商图标 | 模型图标 |
-| --- | --- | --- |
-| OpenAI / GPT | `openai.svg` | OpenAI |
-| Anthropic / Claude | `anthropic.svg` | `claude-color.svg` |
-| Google / Gemini | `gemini-color.svg` | Gemini |
-| DeepSeek | `deepseek-color.svg` | DeepSeek |
-| 百炼 / Qwen | `bailian-color.svg` | `qwen-color.svg` |
-| Moonshot / Kimi | `moonshot.svg` | `kimi-color.svg` |
-| 智谱 / Z.ai | 地区对应 `zhipu-color.svg` 或 `zai.svg` | 依据显式模型品牌元数据 |
-| MiniMax | `minimax-color.svg` | MiniMax |
-| OpenRouter、硅基流动 | 对应平台图标 | 可显示已识别的模型厂商品牌，未知则使用平台图标 |
-| Ollama、LM Studio | 对应本地服务图标 | 依据模型元数据 |
-| 自定义网关 / sub2api | 通用网关图标或用户选择的内置图标 | 与模型品牌独立 |
+| 对象                 | 服务商图标                              | 模型图标                                       |
+| -------------------- | --------------------------------------- | ---------------------------------------------- |
+| OpenAI / GPT         | `openai.svg`                            | OpenAI                                         |
+| Anthropic / Claude   | `anthropic.svg`                         | `claude-color.svg`                             |
+| Google / Gemini      | `gemini-color.svg`                      | Gemini                                         |
+| DeepSeek             | `deepseek-color.svg`                    | DeepSeek                                       |
+| 百炼 / Qwen          | `bailian-color.svg`                     | `qwen-color.svg`                               |
+| Moonshot / Kimi      | `moonshot.svg`                          | `kimi-color.svg`                               |
+| 智谱 / Z.ai          | 地区对应 `zhipu-color.svg` 或 `zai.svg` | 依据显式模型品牌元数据                         |
+| MiniMax              | `minimax-color.svg`                     | MiniMax                                        |
+| OpenRouter、硅基流动 | 对应平台图标                            | 可显示已识别的模型厂商品牌，未知则使用平台图标 |
+| Ollama、LM Studio    | 对应本地服务图标                        | 依据模型元数据                                 |
+| 自定义网关 / sub2api | 通用网关图标或用户选择的内置图标        | 与模型品牌独立                                 |
 
 常规列表图标为 24px，详情图标为 28–32px，背景容器为 40–48px。保留 SVG 比例；单色图标适配当前前景色，彩色图标保持品牌色。旁边已有文字时图标 `alt=""`，仅图标的按钮必须有 accessible name。
 

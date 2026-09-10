@@ -61,17 +61,12 @@
       "indexes": {
         "articles_feed_url": {
           "name": "articles_feed_url",
-          "columns": [
-            "feed_id",
-            "url"
-          ],
+          "columns": ["feed_id", "url"],
           "isUnique": true
         },
         "articles_date": {
           "name": "articles_date",
-          "columns": [
-            "published_at"
-          ],
+          "columns": ["published_at"],
           "isUnique": false
         }
       },
@@ -80,12 +75,8 @@
           "name": "articles_feed_id_feeds_id_fk",
           "tableFrom": "articles",
           "tableTo": "feeds",
-          "columnsFrom": [
-            "feed_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["feed_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -260,9 +251,7 @@
       "indexes": {
         "feeds_url_unique": {
           "name": "feeds_url_unique",
-          "columns": [
-            "url"
-          ],
+          "columns": ["url"],
           "isUnique": true
         }
       },
@@ -341,10 +330,7 @@
       "indexes": {
         "provider_checks_provider": {
           "name": "provider_checks_provider",
-          "columns": [
-            "provider_id",
-            "checked_at"
-          ],
+          "columns": ["provider_id", "checked_at"],
           "isUnique": false
         }
       },
@@ -353,12 +339,8 @@
           "name": "provider_checks_provider_id_providers_id_fk",
           "tableFrom": "provider_checks",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -398,12 +380,8 @@
           "name": "provider_credentials_provider_id_providers_id_fk",
           "tableFrom": "provider_credentials",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -490,17 +468,12 @@
       "indexes": {
         "provider_models_provider_model": {
           "name": "provider_models_provider_model",
-          "columns": [
-            "provider_id",
-            "model_id"
-          ],
+          "columns": ["provider_id", "model_id"],
           "isUnique": true
         },
         "provider_models_provider": {
           "name": "provider_models_provider",
-          "columns": [
-            "provider_id"
-          ],
+          "columns": ["provider_id"],
           "isUnique": false
         }
       },
@@ -509,12 +482,8 @@
           "name": "provider_models_provider_id_providers_id_fk",
           "tableFrom": "provider_models",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -643,12 +612,8 @@
           "name": "settings_default_provider_model_id_provider_models_id_fk",
           "tableFrom": "settings",
           "tableTo": "provider_models",
-          "columnsFrom": [
-            "default_provider_model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_provider_model_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }

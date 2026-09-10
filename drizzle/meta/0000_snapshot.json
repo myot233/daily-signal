@@ -61,17 +61,12 @@
       "indexes": {
         "articles_feed_url": {
           "name": "articles_feed_url",
-          "columns": [
-            "feed_id",
-            "url"
-          ],
+          "columns": ["feed_id", "url"],
           "isUnique": true
         },
         "articles_date": {
           "name": "articles_date",
-          "columns": [
-            "published_at"
-          ],
+          "columns": ["published_at"],
           "isUnique": false
         }
       },
@@ -80,12 +75,8 @@
           "name": "articles_feed_id_feeds_id_fk",
           "tableFrom": "articles",
           "tableTo": "feeds",
-          "columnsFrom": [
-            "feed_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["feed_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -225,9 +216,7 @@
       "indexes": {
         "feeds_url_unique": {
           "name": "feeds_url_unique",
-          "columns": [
-            "url"
-          ],
+          "columns": ["url"],
           "isUnique": true
         }
       },

@@ -5,6 +5,8 @@ export function shouldDiscardProviderDraft(input: {
   currentLocationKey: string;
 }): boolean {
   if (!input.draftProviderId) return false;
-  return input.draftProviderId !== input.selectedProviderId
-    || input.previousLocationKey !== input.currentLocationKey;
+  return (
+    input.draftProviderId !== input.selectedProviderId ||
+    input.previousLocationKey !== input.currentLocationKey
+  );
 }

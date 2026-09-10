@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.32.1",
-  "engines": {
-    "node": ">=24.0.0"
-  },
   "scripts": {
+    "prepare": "husky",
     "dev": "tsx watch server/index.ts",
     "build": "tsc --noEmit && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
@@ -20,9 +17,11 @@
     "test:storybook:watch": "vitest --project=storybook",
     "lint": "oxlint --deny-warnings .",
     "lint:fix": "oxlint --fix .",
-    "format:server": "prettier --write \"server/**/*.ts\"",
-    "format:server:check": "prettier --check \"server/**/*.ts\"",
-    "check": "pnpm format:server:check && pnpm lint && pnpm typecheck && pnpm test",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "format:server": "oxfmt \"server/**/*.ts\"",
+    "format:server:check": "oxfmt --check \"server/**/*.ts\"",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/migrate.ts"
   },
@@ -75,14 +74,23 @@
     "@types/react-dom": "^19.1.0",
     "@vitest/browser-playwright": "^4.1.11",
     "drizzle-kit": "^0.31.10",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
     "node-gyp": "^13.0.2",
+    "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
     "playwright": "^1.63.0",
-    "prettier": "^3.9.6",
     "storybook": "^10.6.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vite": "^7.1.0",
     "vitest": "^4.1.11"
-  }
+  },
+  "lint-staged": {
+    "*": "oxfmt --no-error-on-unmatched-pattern"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.32.1"
 }
