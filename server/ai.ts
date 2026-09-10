@@ -8,6 +8,7 @@ import { db, getSettings, listArticles } from './db';
 import { digests } from './schema';
 import { HttpError } from './errors';
 import { fetchPublicText, normalizePublicUrl, PublicFetchError } from './network';
+import { renderDigestTemplate, TemplateError } from '../shared/template';
 
 interface AiOptions { signal?: AbortSignal; model?: LanguageModel }
 const editorialRules = `你是一位谨慎的技术日报编辑，用中文写作，保留技术专有名词。
@@ -107,6 +108,14 @@ export async function generateDigest(rawInput: DigestInput, options: AiOptions =
     current.push(encoded); currentSize += encoded.length + 1;
   }
   if (current.length) batches.push(`[${current.join(',')}]`);
+  let template: string;
+  try {
+    template = renderDigestTemplate(settings.template, { date: input.date, startAt: input.startAt, endAt: input.endAt, articleCount: sources.length, model: settings.model, articles: sources });
+    if (!template.trim()) throw new TemplateError('模板渲染结果为空，请检查条件分支。');
+  } catch (error) {
+    if (error instanceof TemplateError) throw new HttpError(400, error.message);
+    throw error;
+  }
   const timeout = AbortSignal.timeout(10 * 60_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const model = options.model ?? configuredModel(settings, input.apiKey);
@@ -119,7 +128,7 @@ export async function generateDigest(rawInput: DigestInput, options: AiOptions =
     }
     material = JSON.stringify({ extracts });
   }
-  const text = await complete(model, `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${settings.template}`, `日报日期：${input.date}；时间范围 [${input.startAt}, ${input.endAt})；参考文章 ${sources.length} 篇。\n资料：\n${material}`, thinkingEnabled ? 16_384 : 6_000, signal, '日报合成');
+  const text = await complete(model, `${editorialRules}\n\n按以下用户模板组织正文；来源与事实约束始终有效：\n${template}`, `日报日期：${input.date}；时间范围 [${input.startAt}, ${input.endAt})；参考文章 ${sources.length} 篇。\n资料：\n${material}`, thinkingEnabled ? 16_384 : 6_000, signal, '日报合成');
   const index = sources.map((source, position) => {
     const title = source.title.replace(/([\\`*_{}[\]()<>#!|])/g, '\\$1').replace(/[\r\n]+/g, ' ');
     const url = source.url.replace(/[()<>'"\\]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);

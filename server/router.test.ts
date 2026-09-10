@@ -45,6 +45,17 @@ test('runtime contract rejects untyped secret fields, malformed input and unknow
   assert.equal(missing.status, 404);
 });
 
+test('saving a malformed template returns a useful error and preserves settings', async () => {
+  const initial = await rpc.state();
+  await assert.rejects(rpc.settings.save({ ...initial.settings, template: '{% if articleCount > 0 %}' }), error => {
+    assert.ok(error instanceof Error && 'code' in error);
+    assert.equal(error.code, 'BAD_REQUEST');
+    assert.match(error.message, /模板错误/);
+    return true;
+  });
+  assert.deepEqual((await rpc.state()).settings, initial.settings);
+});
+
 test('local API rejects cross-origin calls, forged Host and oversized bodies', async () => {
   for (const headers of [{ Origin: 'https://outside.example' }, { Host: 'outside.example' }, { 'Sec-Fetch-Site': 'cross-site' }]) {
     // Use raw HTTP: fetch can normalize/replace a caller-supplied Host header.

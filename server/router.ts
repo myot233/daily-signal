@@ -7,11 +7,13 @@ import { addFeed, exportOpml, importOpml, refreshFeeds } from './feeds';
 import { generateDigest, testConnection } from './ai';
 import { HttpError } from './errors';
 import { normalizePublicUrl, PublicFetchError } from './network';
+import { TemplateError, validateDigestTemplate } from '../shared/template';
 
 export interface RpcContext { signal?: AbortSignal }
 const implementer = implement(contract).$context<RpcContext>();
 const safeErrors = implementer.middleware(async ({ next }) => {
   try { return await next(); } catch (error) {
+    if (error instanceof TemplateError) throw new ORPCError('BAD_REQUEST', { message: error.message });
     if (error instanceof HttpError) {
       const codes: Record<number, string> = { 400: 'BAD_REQUEST', 404: 'NOT_FOUND', 409: 'CONFLICT', 413: 'PAYLOAD_TOO_LARGE', 502: 'BAD_GATEWAY', 504: 'GATEWAY_TIMEOUT' };
       throw new ORPCError(codes[error.status] ?? 'INTERNAL_SERVER_ERROR', { message: error.message });
@@ -55,6 +57,7 @@ export const router = implementer.router({
   settings: {
     save: rpc.settings.save.handler(({ input }) => {
       normalizePublicUrl(input.baseUrl);
+      validateDigestTemplate(input.template);
       db.update(settings).set({ value: input }).where(eq(settings.id, 1)).run();
       return input;
     }),

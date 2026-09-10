@@ -8,7 +8,7 @@ import { HttpError } from './errors';
 
 // Test-only loading boundary: select the isolated DB before importing its modules.
 process.env.DATABASE_PATH = ':memory:';
-const { db, getSettings, getState } = await import('./db');
+const { db, defaultTemplate, getSettings, getState } = await import('./db');
 const { articles, digests, feeds, settings } = await import('./schema');
 const { configuredModel, generateDigest, testConnection } = await import('./ai');
 const input: DigestInput = { date: '2026-09-10', startAt: '2026-09-10T00:00:00.000Z', endAt: '2026-09-11T00:00:00.000Z', apiKey: 'KEY-SENTINEL-NEVER-PERSIST' };
@@ -16,7 +16,7 @@ const input: DigestInput = { date: '2026-09-10', startAt: '2026-09-10T00:00:00.0
 beforeEach(() => {
   db.delete(digests).run(); db.delete(feeds).run();
   db.insert(feeds).values({ id: 'feed', url: 'https://example.com/rss', title: 'Engineering', category: 'Tech', siteUrl: 'https://example.com', createdAt: input.startAt }).run();
-  db.update(settings).set({ value: { ...getSettings(), model: 'test-model' } }).where(eq(settings.id, 1)).run();
+  db.update(settings).set({ value: { ...getSettings(), model: 'test-model', template: defaultTemplate } }).where(eq(settings.id, 1)).run();
 });
 function addArticle(id: string, content = 'A concrete release with a migration guide.', publishedAt = '2026-09-10T12:00:00.000Z', feedId = 'feed', url = `https://example.com/${id}`) {
   db.insert(articles).values({ id, feedId, title: `Release ${id}`, url, content, publishedAt, dateEstimated: false }).run();
@@ -33,6 +33,31 @@ function completionResponse(content: string, reason = 'stop') {
     usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   });
 }
+
+test('digest templates receive the actual date and deduplicated sources before synthesis', async () => {
+  addArticle('first', 'short', undefined, 'feed', 'https://example.com/release');
+  addArticle('second', 'The fuller release announcement.', undefined, 'feed', 'https://example.com/release#details');
+  db.update(settings).set({ value: { ...getSettings(), template: '# {{ date }} / {{ articleCount }}\n{% for article in articles %}{{ article.title }}{% endfor %}' } }).where(eq(settings.id, 1)).run();
+  const model = providerWithResponses(body => {
+    const instructions = body.messages.find(message => message.role === 'system')?.content ?? '';
+    assert.match(instructions, /# 2026-09-10 \/ 1\nRelease second/);
+    assert.equal(instructions.includes('{{'), false);
+    return completionResponse('Rendered report.');
+  });
+  await generateDigest(input, { model });
+});
+
+test('invalid or empty rendered templates fail before any paid extraction call', async () => {
+  for (let index = 0; index < 8; index++) addArticle(`item-${index}`, 'x'.repeat(6_000));
+  let calls = 0;
+  const model = providerWithResponses(() => { calls++; return completionResponse('unused'); });
+  for (const template of ['{% if %}', '{{ missing }}', '{% if articleCount == 0 %}Nothing{% endif %}']) {
+    db.update(settings).set({ value: { ...getSettings(), template } }).where(eq(settings.id, 1)).run();
+    await assert.rejects(generateDigest(input, { model }), error => error instanceof HttpError && error.status === 400);
+  }
+  assert.equal(calls, 0);
+  assert.equal(getState().digests.length, 0);
+});
 
 test('empty local day costs nothing, and date boundaries include start but exclude end', async () => {
   let requests = 0;

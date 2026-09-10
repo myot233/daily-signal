@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url';
 import type { AppState, Article, Feed, Settings } from '../shared/types';
 import { articles, digests, feeds, settings } from './schema';
 
-export const defaultTemplate = `# 今日技术日报
+export const defaultTemplate = `# {{ date }} 技术日报
+
+本期参考 {{ articleCount }} 篇文章。
 
 > 用 2–3 句话概括今天最值得注意的技术变化。信息不足时明确说明，不凑数。
 
