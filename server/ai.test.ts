@@ -25,7 +25,7 @@ beforeEach(() => {
 function addArticle(id: string, content = 'A concrete release with a migration guide.', publishedAt = '2026-09-10T12:00:00.000Z', feedId = 'feed', url = `https://example.com/${id}`) {
   db.insert(articles).values({ id, feedId, title: `Release ${id}`, url, content, publishedAt, dateEstimated: false }).run();
 }
-function providerWithResponses(respond: (body: { messages: { role: string; content: string }[] }) => Response | Promise<Response>) {
+function providerWithResponses(respond: (body: { messages: { role: string; content: string }[]; max_tokens?: number }) => Response | Promise<Response>) {
   return createOpenAICompatible({
     name: 'test', baseURL: 'https://model.example.com/v1', apiKey: input.apiKey,
     fetch: async (_url, init) => respond(JSON.parse(String(init?.body))),
@@ -84,6 +84,51 @@ test('multiple batches cover the final article, and a failed synthesis preserves
   });
   await assert.rejects(generateDigest(input, { model: failingModel }), error => error instanceof HttpError && error.status === 502);
   assert.deepEqual(getState().digests.map(report => report.id), [saved.id]);
+});
+
+test('six extraction batches honor the saved output ceiling even without explicit thinking options', async () => {
+  const state = getState();
+  const selected = state.providers.find(provider => provider.models.some(model => model.id === state.defaultProviderModelId))!;
+  db.update(providers).set({ options: { ...selected.options, maxOutputTokens: 36_000 } }).where(eq(providers.id, selected.id)).run();
+  for (let index = 0; index < 24; index++) addArticle(`batch-${index}`, 'Content. '.repeat(660));
+  const budgets: number[] = [];
+  let extractionCalls = 0;
+  const model = providerWithResponses(body => {
+    budgets.push(body.max_tokens!);
+    const extracting = body.messages.some(message => message.role === 'user' && message.content.includes('资料批次'));
+    if (extracting) extractionCalls++;
+    // Reproduce a batch that cannot finish inside the old hidden 2,000 cap.
+    return extractionCalls === 3 && extracting && (body.max_tokens ?? 0) < 3_000
+      ? completionResponse('Truncated extraction', 'length')
+      : completionResponse(extracting ? 'Concise complete facts.' : 'Complete daily report.');
+  });
+  const report = await generateDigest(input, { model });
+  assert.equal(extractionCalls, 6);
+  assert.deepEqual(budgets, Array(7).fill(36_000));
+  assert.equal(report.articleCount, 24);
+  assert.match(report.markdown, /Complete daily report/);
+  assert.equal(getState().digests.length, 1);
+});
+
+test('extraction respects a smaller configured ceiling and never archives or retries truncated output', async () => {
+  const state = getState();
+  const selected = state.providers.find(provider => provider.models.some(model => model.id === state.defaultProviderModelId))!;
+  db.update(providers).set({ options: { ...selected.options, maxOutputTokens: 1_024 } }).where(eq(providers.id, selected.id)).run();
+  for (let index = 0; index < 6; index++) addArticle(`limited-${index}`, 'Content. '.repeat(660));
+  let calls = 0;
+  const model = providerWithResponses(body => {
+    calls++;
+    assert.equal(body.max_tokens, 1_024);
+    return completionResponse('Incomplete facts.', 'length');
+  });
+  await assert.rejects(generateDigest(input, { model }), error => {
+    assert.ok(error instanceof HttpError);
+    assert.match(error.message, /资料提取 1\/2未完成/);
+    assert.match(error.message, /提高输出上限/);
+    return true;
+  });
+  assert.equal(calls, 1);
+  assert.equal(getState().digests.length, 0);
 });
 
 test('upstream authentication and quota errors are sanitized and never retried', async () => {

@@ -49,7 +49,10 @@ async function complete(model: LanguageModel, instructions: string, prompt: stri
     const result = await generateText({ model, instructions, prompt, maxOutputTokens, maxRetries: 0, abortSignal: signal, providerOptions });
     if (result.finishReason !== 'stop') {
       const usage = result.usage.outputTokens === undefined ? '' : `，已使用 ${result.usage.outputTokens} 输出 tokens`;
-      throw new ProviderStageError(502, `${stage}未完成（finishReason=${result.finishReason}${usage}，上限 ${maxOutputTokens}）。日报未保存；推理模型可能需要更大的输出预算。`, 'model');
+      const guidance = result.finishReason === 'length'
+        ? '请在“模型与服务商”的高级参数中提高输出上限，或减少本次资料量；推理也可能占用输出预算。'
+        : '请检查模型响应或稍后重试。';
+      throw new ProviderStageError(502, `${stage}未完成（finishReason=${result.finishReason}${usage}，上限 ${maxOutputTokens}）。日报未保存。${guidance}`, 'model');
     }
     const text = result.text.trim();
     if (!text) throw new ProviderStageError(502, `${stage}返回空内容，日报未保存。`, 'model');
@@ -119,16 +122,13 @@ export async function generateDigest(rawInput: DigestInput, options: AiOptions =
       protocol: snapshot.provider.protocol, presetId: snapshot.provider.presetId, baseUrl: snapshot.provider.baseUrl,
       modelId: snapshot.model.modelId, apiKey: snapshot.apiKey, options: snapshot.provider.options,
     }, options.transport);
-  const thinkingEnabled = snapshot.provider.options.deepseekThinking === 'enabled'
-    || snapshot.provider.options.anthropicThinkingBudget !== undefined
-    || (snapshot.provider.options.geminiThinkingBudget !== undefined && snapshot.provider.options.geminiThinkingBudget > 0)
-    || (snapshot.provider.options.reasoningEffort !== undefined && snapshot.provider.options.reasoningEffort !== 'none');
   let material = batches[0]!;
   if (batches.length > 1) {
     const extracts: string[] = [];
     for (let index = 0; index < batches.length; index++) {
-      const totalBudget = thinkingEnabled ? runtime.options.maxOutputTokens : Math.min(runtime.options.maxOutputTokens, 2_000);
-      extracts.push(await complete(runtime.model, `${editorialRules}\n这是资料提取阶段：保留本批重要事实、明确版本、影响分析及各自原始来源 ID/URL；区分旧闻。简洁输出，以便最后统一编辑。`, `日报日期：${input.date}。资料批次 ${index + 1}/${batches.length}：\n${batches[index]}`, runtime.requestMaxOutputTokens(totalBudget), signal, `资料提取 ${index + 1}/${batches.length}`, runtime.providerOptions));
+      // The saved ceiling applies to every stage. Gateways may enable reasoning
+      // without an explicit option, so local flags cannot justify a smaller cap.
+      extracts.push(await complete(runtime.model, `${editorialRules}\n这是资料提取阶段：保留本批重要事实、明确版本、影响分析及各自原始来源 ID/URL；区分旧闻。只输出简洁的事实要点，合并重复信息，不展开写成完整日报，以便最后统一编辑。`, `日报日期：${input.date}。资料批次 ${index + 1}/${batches.length}：\n${batches[index]}`, runtime.requestMaxOutputTokens(runtime.options.maxOutputTokens), signal, `资料提取 ${index + 1}/${batches.length}`, runtime.providerOptions));
     }
     material = JSON.stringify({ extracts });
   }
