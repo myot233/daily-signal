@@ -34,19 +34,21 @@ function TemplateHarness(props: TemplateProps) {
     }
   };
 
-  return <>
-    <TemplateView
-      {...props}
-      state={{ ...props.state, settings }}
-      perform={perform}
-      saveSettings={async (update) => {
-        const saved = await props.saveSettings(update);
-        setSettings(saved);
-        return saved;
-      }}
-    />
-    {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.message}</p>}
-  </>;
+  return (
+    <>
+      <TemplateView
+        {...props}
+        state={{ ...props.state, settings }}
+        perform={perform}
+        saveSettings={async (update) => {
+          const saved = await props.saveSettings(update);
+          setSettings(saved);
+          return saved;
+        }}
+      />
+      {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.message}</p>}
+    </>
+  );
 }
 
 const busyDraft = '# 尚未保存的草稿\n\n保留这段编辑。';
@@ -67,7 +69,9 @@ const meta = {
       await action();
       return true;
     }),
-    saveSettings: fn<TemplateProps['saveSettings']>(async (settings) => settingsSchema.parse(settings)),
+    saveSettings: fn<TemplateProps['saveSettings']>(async (settings) =>
+      settingsSchema.parse(settings),
+    ),
   },
   render: (args) => <TemplateHarness {...args} />,
 } satisfies Meta<typeof TemplateView>;
@@ -78,7 +82,9 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(args.state.settings.template);
+    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(
+      args.state.settings.template,
+    );
     await expect(canvas.getByText('已保存', { exact: true })).toBeVisible();
     await expect(canvas.getByRole('button', { name: '保存模板' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: '放弃修改' })).toBeDisabled();
@@ -91,7 +97,9 @@ export const ConfigureAutomaticDigest: Story = {
       defaultProviderModelId: '00000000-0000-4000-8000-000000000002',
       hasApiKey: true,
     }),
-    saveSettings: fn<TemplateProps['saveSettings']>(async (settings) => settingsSchema.parse(settings)),
+    saveSettings: fn<TemplateProps['saveSettings']>(async (settings) =>
+      settingsSchema.parse(settings),
+    ),
   },
   play: async ({ canvasElement, args, userEvent }) => {
     const canvas = within(canvasElement);
@@ -136,7 +144,9 @@ export const EditPreviewAndDiscard: Story = {
     await userEvent.click(canvas.getByRole('tab', { name: '编辑模板' }));
     await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(draft);
     await userEvent.click(canvas.getByRole('button', { name: '放弃修改' }));
-    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(args.state.settings.template);
+    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(
+      args.state.settings.template,
+    );
     await expect(canvas.getByText('已保存', { exact: true })).toBeVisible();
     await expect(canvas.getByRole('button', { name: '保存模板' })).toBeDisabled();
   },
@@ -204,7 +214,9 @@ export const RejectedSavePreservesDraft: Story = {
     await userEvent.clear(editor);
     await userEvent.type(editor, draft);
     await userEvent.click(canvas.getByRole('button', { name: '保存模板' }));
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('本地存储不可写，模板尚未保存。');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      '本地存储不可写，模板尚未保存。',
+    );
     await expect(editor).toHaveValue(draft);
     await expect(canvas.getByText('有未保存的修改')).toBeVisible();
     await expect(canvas.getByRole('button', { name: '保存模板' })).toBeEnabled();
@@ -214,7 +226,9 @@ export const RejectedSavePreservesDraft: Story = {
     await expect(canvas.getByRole('heading', { name: '需要保留的草稿', level: 1 })).toBeVisible();
     await userEvent.click(canvas.getByRole('tab', { name: '编辑模板' }));
     await userEvent.click(canvas.getByRole('button', { name: '放弃修改' }));
-    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(args.state.settings.template);
+    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(
+      args.state.settings.template,
+    );
     await expect(canvas.getByText('已保存', { exact: true })).toBeVisible();
   },
 };
@@ -249,6 +263,8 @@ export const BlankTemplateCannotSave: Story = {
     await expect(args.saveSettings).not.toHaveBeenCalled();
     await userEvent.click(canvas.getByRole('button', { name: '放弃修改' }));
     await userEvent.click(canvas.getByRole('tab', { name: '编辑模板' }));
-    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(args.state.settings.template);
+    await expect(canvas.getByRole('textbox', { name: '日报结构与写作要求' })).toHaveValue(
+      args.state.settings.template,
+    );
   },
 };

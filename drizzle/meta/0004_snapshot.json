@@ -61,17 +61,12 @@
       "indexes": {
         "articles_feed_url": {
           "name": "articles_feed_url",
-          "columns": [
-            "feed_id",
-            "url"
-          ],
+          "columns": ["feed_id", "url"],
           "isUnique": true
         },
         "articles_date": {
           "name": "articles_date",
-          "columns": [
-            "published_at"
-          ],
+          "columns": ["published_at"],
           "isUnique": false
         }
       },
@@ -80,12 +75,8 @@
           "name": "articles_feed_id_feeds_id_fk",
           "tableFrom": "articles",
           "tableTo": "feeds",
-          "columnsFrom": [
-            "feed_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["feed_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -129,10 +120,7 @@
       "indexes": {
         "digest_generation_events_session": {
           "name": "digest_generation_events_session",
-          "columns": [
-            "session_id",
-            "id"
-          ],
+          "columns": ["session_id", "id"],
           "isUnique": false
         }
       },
@@ -141,12 +129,8 @@
           "name": "digest_generation_events_session_id_digest_generation_sessions_id_fk",
           "tableFrom": "digest_generation_events",
           "tableTo": "digest_generation_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -190,10 +174,7 @@
       "indexes": {
         "digest_generation_sessions_status": {
           "name": "digest_generation_sessions_status",
-          "columns": [
-            "status",
-            "updated_at"
-          ],
+          "columns": ["status", "updated_at"],
           "isUnique": false
         }
       },
@@ -368,9 +349,7 @@
       "indexes": {
         "feeds_url_unique": {
           "name": "feeds_url_unique",
-          "columns": [
-            "url"
-          ],
+          "columns": ["url"],
           "isUnique": true
         }
       },
@@ -449,10 +428,7 @@
       "indexes": {
         "provider_checks_provider": {
           "name": "provider_checks_provider",
-          "columns": [
-            "provider_id",
-            "checked_at"
-          ],
+          "columns": ["provider_id", "checked_at"],
           "isUnique": false
         }
       },
@@ -461,12 +437,8 @@
           "name": "provider_checks_provider_id_providers_id_fk",
           "tableFrom": "provider_checks",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -506,12 +478,8 @@
           "name": "provider_credentials_provider_id_providers_id_fk",
           "tableFrom": "provider_credentials",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -598,17 +566,12 @@
       "indexes": {
         "provider_models_provider_model": {
           "name": "provider_models_provider_model",
-          "columns": [
-            "provider_id",
-            "model_id"
-          ],
+          "columns": ["provider_id", "model_id"],
           "isUnique": true
         },
         "provider_models_provider": {
           "name": "provider_models_provider",
-          "columns": [
-            "provider_id"
-          ],
+          "columns": ["provider_id"],
           "isUnique": false
         }
       },
@@ -617,12 +580,8 @@
           "name": "provider_models_provider_id_providers_id_fk",
           "tableFrom": "provider_models",
           "tableTo": "providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -751,12 +710,8 @@
           "name": "settings_default_provider_model_id_provider_models_id_fk",
           "tableFrom": "settings",
           "tableTo": "provider_models",
-          "columnsFrom": [
-            "default_provider_model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_provider_model_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }

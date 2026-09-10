@@ -18,15 +18,29 @@ import {
   settingsUpdateSchema,
 } from './types';
 import {
-  providerConnectionSchema, providerCreateSchema, providerDiscoverResultSchema, providerDiscoverSchema,
-  providerListSchema, providerModelRemoveSchema, providerModelSaveSchema, providerModelSchema,
-  providerRemoveSchema, providerTestResultSchema, providerTestSchema, providerUpdateSchema,
+  providerConnectionSchema,
+  providerCreateSchema,
+  providerDiscoverResultSchema,
+  providerDiscoverSchema,
+  providerListSchema,
+  providerModelRemoveSchema,
+  providerModelSaveSchema,
+  providerModelSchema,
+  providerRemoveSchema,
+  providerTestResultSchema,
+  providerTestSchema,
+  providerUpdateSchema,
   setDefaultProviderModelSchema,
 } from './providers/schemas';
 
 const procedure = oc.errors({
-  BAD_REQUEST: {}, NOT_FOUND: {}, CONFLICT: {}, PAYLOAD_TOO_LARGE: {},
-  BAD_GATEWAY: {}, GATEWAY_TIMEOUT: {}, INTERNAL_SERVER_ERROR: {},
+  BAD_REQUEST: {},
+  NOT_FOUND: {},
+  CONFLICT: {},
+  PAYLOAD_TOO_LARGE: {},
+  BAD_GATEWAY: {},
+  GATEWAY_TIMEOUT: {},
+  INTERNAL_SERVER_ERROR: {},
 });
 export const contract = {
   state: procedure.output(appStateSchema),

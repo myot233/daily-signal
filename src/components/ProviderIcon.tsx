@@ -14,6 +14,7 @@ const icons: Record<string, string> = {
 
 export function ProviderIcon({ presetId, size = 24 }: { presetId: string; size?: number }) {
   const source = icons[presetId];
-  if (!source) return <Waypoints aria-hidden="true" style={{ width: size, height: size }} strokeWidth={1.6} />;
+  if (!source)
+    return <Waypoints aria-hidden="true" style={{ width: size, height: size }} strokeWidth={1.6} />;
   return <img src={source} alt="" width={size} height={size} className="object-contain" />;
 }

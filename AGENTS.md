@@ -28,7 +28,7 @@ Daily Signal 是本地优先的 RSS / Atom 阅读与 AI 日报应用，包含订
 ## 环境与常用命令
 
 - Node.js 最低 24；本地建议使用与 CI 相同的 Node.js 24。使用 `packageManager` 指定的 pnpm，不混用 npm / yarn，不新增其他锁文件。
-- 首次安装使用下面的顺序：先链接依赖中的 `node-gyp`，再执行原生模块构建。`--ignore-scripts` 不是最终安装状态，不能省略 `pnpm rebuild`。
+- 首次安装使用下面的顺序：先链接依赖中的 `node-gyp`，再执行原生模块构建并安装 Git hooks。`--ignore-scripts` 不是最终安装状态，不能省略 `pnpm rebuild`。
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
@@ -45,7 +45,8 @@ Linux / CI 安装浏览器及系统依赖时使用 `pnpm exec playwright install
 | `pnpm storybook`            | 启动组件工作台，`http://127.0.0.1:6006`                                    |
 | `pnpm test:storybook:watch` | 浏览器测试监听模式；不替代一次性检查                                       |
 | `pnpm lint:fix`             | 应用 lint 自动修复，完成后检查改动范围                                     |
-| `pnpm format:server`        | 格式化 `server/**/*.ts`，不要顺带重排无关文件                              |
+| `pnpm format`               | 使用 Oxfmt 格式化全仓支持的文件                                            |
+| `pnpm format:server`        | 使用 Oxfmt 格式化 `server/**/*.ts`，不要顺带重排无关文件                   |
 | `pnpm db:generate`          | 根据数据库 schema 生成迁移，必须人工检查生成的 SQL                         |
 | `pnpm db:migrate`           | 对指定数据库执行迁移；先确认 `DATABASE_PATH`，不得把日常开发数据当测试数据 |
 
@@ -61,17 +62,19 @@ pnpm check && pnpm build && pnpm build-storybook
 
 | 检查                       | 实际覆盖                                                                      |
 | -------------------------- | ----------------------------------------------------------------------------- |
-| `pnpm format:server:check` | 服务端 TypeScript 的 Prettier 格式检查                                        |
+| `pnpm format:check`        | Oxfmt 全仓格式检查                                                            |
+| `pnpm format:server:check` | 仅检查服务端 TypeScript 格式                                                  |
 | `pnpm lint`                | oxlint 静态检查，警告也视为失败                                               |
 | `pnpm typecheck`           | `tsc --noEmit`；包含前后端、共享契约、stories 和测试配置                      |
 | `pnpm test:server`         | `tsx --test` 执行 `server/**/*.test.ts`，使用 Node.js 原生测试框架            |
 | `pnpm test:storybook`      | Vitest `storybook` project，在真实 Chromium 中执行 stories 的交互与无障碍检查 |
 | `pnpm test`                | 依次执行服务端测试和 Storybook 测试                                           |
-| `pnpm check`               | 依次执行服务端格式检查、lint、类型检查和 `pnpm test`                          |
+| `pnpm check`               | 依次执行全仓格式检查、lint、类型检查和 `pnpm test`                            |
 | `pnpm build`               | 类型检查与 Vite 生产构建，输出 `dist/`                                        |
 | `pnpm build-storybook`     | Storybook 静态构建，输出 `storybook-static/`                                  |
 
 - 开发中可以只跑受影响的测试以缩短反馈；最终不能以局部通过替代完整门禁。并行修改先汇合，再运行最终检查，避免检查半成品。
+- pre-commit hook 使用 lint-staged 对暂存文件执行 Oxfmt，并把格式化结果重新加入暂存区；不要使用 `--no-verify` 绕过。
 - 纯文档改动且不影响代码、配置或命令实现时，可以只验证命令、路径、链接与事实；交付时明确说明没有重跑运行时测试。CI 仍按工作流执行完整检查。
 - 任何检查失败都要排查原因；不得通过 `.skip`、删除有效断言、降低检查级别、添加宽泛忽略或修改无关行为来“变绿”。修复后重跑失败项及受影响的检查。
 - 环境阻塞必须说明具体命令、错误和未验证范围，不能把未运行的检查描述为通过。
@@ -111,7 +114,7 @@ pnpm check && pnpm build && pnpm build-storybook
 - 优先复用 `src/components/ui/`、`src/lib/ui-styles.ts` 和现有主题变量；保持现有纸张色、编辑式排版与中文文案风格。
 - 使用语义化 HTML，保持标题层级连续，表单控件有可访问标签，纯图标按钮有名称；保留键盘导航与减少动画偏好。
 - 保持 TypeScript 严格类型；外部输入用 Zod schema 校验，不以 `any`、不安全断言或关闭 lint 绕过契约。
-- 服务端沿用已有 Prettier 配置；前端遵循相邻文件风格。没有全仓前端格式化脚本，不借功能改动大面积重排文件。
+- 全仓使用根目录 `.oxfmtrc.json` 中的 Oxfmt 规则；前端遵循相邻文件风格，不借功能改动大面积重排文件。
 - 优先小范围、完整的修改。复用已有抽象；只有重复职责明确时才抽取公共逻辑，不引入未使用的依赖、占位实现或兼容别名。
 - 对标准可复用的数组、对象与集合工具，若 `es-toolkit` 能明显降低复杂度或重复扫描，优先使用窄子路径导入；不要仅为保持一致性替换更省分配、带早退或明确安全边界的原生单遍循环。
 

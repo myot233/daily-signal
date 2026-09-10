@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn, within } from 'storybook/test'
-import type { Article, Feed } from '../../shared/types'
-import type { Perform } from '../lib/client'
-import { createAppState } from '../stories/fixtures'
-import { ArticlesView } from './ArticlesView'
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, fn, within } from 'storybook/test';
+import type { Article, Feed } from '../../shared/types';
+import type { Perform } from '../lib/client';
+import { createAppState } from '../stories/fixtures';
+import { ArticlesView } from './ArticlesView';
 
-const publishedAt = '2026-09-09T08:00:00.000Z'
+const publishedAt = '2026-09-09T08:00:00.000Z';
 const feeds: Feed[] = [
   {
     id: 'engineering',
@@ -29,7 +29,7 @@ const feeds: Feed[] = [
     error: null,
     articleCount: 2,
   },
-]
+];
 
 const articles: Article[] = [
   {
@@ -82,7 +82,7 @@ const articles: Article[] = [
     publishedAt,
     dateEstimated: false,
   },
-]
+];
 
 const meta = {
   title: 'Views/Articles',
@@ -93,86 +93,112 @@ const meta = {
     navigate: fn(),
     notify: fn(),
     perform: fn<Perform>(async (_label, action) => {
-      await action()
-      return true
+      await action();
+      return true;
     }),
   },
-} satisfies Meta<typeof ArticlesView>
+} satisfies Meta<typeof ArticlesView>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Populated: Story = {
   play: async ({ canvasElement, step, userEvent }) => {
-    const canvas = within(canvasElement)
-    const search = canvas.getByRole('textbox', { name: '搜索文章' })
-    const source = canvas.getByRole('combobox', { name: '按来源筛选' })
+    const canvas = within(canvasElement);
+    const search = canvas.getByRole('textbox', { name: '搜索文章' });
+    const source = canvas.getByRole('combobox', { name: '按来源筛选' });
 
-    await step('Safe sources open securely; unsafe sources remain readable without links', async () => {
-      await expect(canvas.getByText('5 篇符合条件')).toBeVisible()
-      for (const article of articles) {
-        await expect(canvas.getByRole('heading', { level: 2, name: article.title })).toBeVisible()
-      }
+    await step(
+      'Safe sources open securely; unsafe sources remain readable without links',
+      async () => {
+        await expect(canvas.getByText('5 篇符合条件')).toBeVisible();
+        for (const article of articles) {
+          await expect(
+            canvas.getByRole('heading', { level: 2, name: article.title }),
+          ).toBeVisible();
+        }
 
-      for (const article of articles.slice(0, 3)) {
-        const link = canvas.getByRole('link', { name: article.title })
-        await expect(link).toHaveAttribute('href', article.url)
-        await expect(link).toHaveAttribute('target', '_blank')
-        await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      }
-      const readLinks = canvas.getAllByRole('link', { name: '阅读原文' })
-      await expect(readLinks).toHaveLength(3)
-      for (const [index, link] of readLinks.entries()) {
-        await expect(link).toHaveAttribute('href', articles[index].url)
-        await expect(link).toHaveAttribute('target', '_blank')
-        await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      }
-      await expect(canvas.queryByRole('link', { name: '不可跳转的脚本地址' })).not.toBeInTheDocument()
-      await expect(canvas.queryByRole('link', { name: '含凭据的来源地址' })).not.toBeInTheDocument()
-      await expect(canvas.getAllByRole('link')).toHaveLength(6)
-    })
+        for (const article of articles.slice(0, 3)) {
+          const link = canvas.getByRole('link', { name: article.title });
+          await expect(link).toHaveAttribute('href', article.url);
+          await expect(link).toHaveAttribute('target', '_blank');
+          await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        }
+        const readLinks = canvas.getAllByRole('link', { name: '阅读原文' });
+        await expect(readLinks).toHaveLength(3);
+        for (const [index, link] of readLinks.entries()) {
+          await expect(link).toHaveAttribute('href', articles[index].url);
+          await expect(link).toHaveAttribute('target', '_blank');
+          await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        }
+        await expect(
+          canvas.queryByRole('link', { name: '不可跳转的脚本地址' }),
+        ).not.toBeInTheDocument();
+        await expect(
+          canvas.queryByRole('link', { name: '含凭据的来源地址' }),
+        ).not.toBeInTheDocument();
+        await expect(canvas.getAllByRole('link')).toHaveLength(6);
+      },
+    );
 
-    await step('Case-insensitive title and content search combines with the selected source', async () => {
-      await userEvent.type(search, 'ReAcT')
-      await expect(canvas.getByText('3 篇符合条件')).toBeVisible()
-      await expect(canvas.getByRole('heading', { level: 2, name: 'React 设计系统' })).toBeVisible()
+    await step(
+      'Case-insensitive title and content search combines with the selected source',
+      async () => {
+        await userEvent.type(search, 'ReAcT');
+        await expect(canvas.getByText('3 篇符合条件')).toBeVisible();
+        await expect(
+          canvas.getByRole('heading', { level: 2, name: 'React 设计系统' }),
+        ).toBeVisible();
 
-      await userEvent.selectOptions(source, 'engineering')
-      await expect(canvas.getByText('2 篇符合条件')).toBeVisible()
-      await expect(canvas.getByRole('heading', { level: 2, name: 'React 19 工程实践' })).toBeVisible()
-      await expect(canvas.getByRole('heading', { level: 2, name: '可靠交付的日常' })).toBeVisible()
-      await expect(canvas.queryByRole('heading', { level: 2, name: 'React 设计系统' })).not.toBeInTheDocument()
-      await expect(canvas.queryByRole('heading', { level: 2, name: '不可跳转的脚本地址' })).not.toBeInTheDocument()
-    })
+        await userEvent.selectOptions(source, 'engineering');
+        await expect(canvas.getByText('2 篇符合条件')).toBeVisible();
+        await expect(
+          canvas.getByRole('heading', { level: 2, name: 'React 19 工程实践' }),
+        ).toBeVisible();
+        await expect(
+          canvas.getByRole('heading', { level: 2, name: '可靠交付的日常' }),
+        ).toBeVisible();
+        await expect(
+          canvas.queryByRole('heading', { level: 2, name: 'React 设计系统' }),
+        ).not.toBeInTheDocument();
+        await expect(
+          canvas.queryByRole('heading', { level: 2, name: '不可跳转的脚本地址' }),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     await step('An unmatched search can clear both filters and restore every article', async () => {
-      await userEvent.clear(search)
-      await userEvent.type(search, '没有这个关键词')
-      await expect(canvas.getByText('0 篇符合条件')).toBeVisible()
-      await expect(canvas.getByRole('heading', { name: '这一页，暂时没有匹配的文章。' })).toBeVisible()
-      await expect(canvas.queryByRole('button', { name: '前往订阅源' })).not.toBeInTheDocument()
+      await userEvent.clear(search);
+      await userEvent.type(search, '没有这个关键词');
+      await expect(canvas.getByText('0 篇符合条件')).toBeVisible();
+      await expect(
+        canvas.getByRole('heading', { name: '这一页，暂时没有匹配的文章。' }),
+      ).toBeVisible();
+      await expect(canvas.queryByRole('button', { name: '前往订阅源' })).not.toBeInTheDocument();
 
-      const clearButtons = canvas.getAllByRole('button', { name: '清除筛选' })
-      await userEvent.click(clearButtons[clearButtons.length - 1])
-      await expect(search).toHaveValue('')
-      await expect(source).toHaveValue('')
-      await expect(canvas.queryByRole('button', { name: '清除筛选' })).not.toBeInTheDocument()
-      await expect(canvas.getByText('5 篇符合条件')).toBeVisible()
+      const clearButtons = canvas.getAllByRole('button', { name: '清除筛选' });
+      await userEvent.click(clearButtons[clearButtons.length - 1]);
+      await expect(search).toHaveValue('');
+      await expect(source).toHaveValue('');
+      await expect(canvas.queryByRole('button', { name: '清除筛选' })).not.toBeInTheDocument();
+      await expect(canvas.getByText('5 篇符合条件')).toBeVisible();
       for (const article of articles) {
-        await expect(canvas.getByRole('heading', { level: 2, name: article.title })).toBeVisible()
+        await expect(canvas.getByRole('heading', { level: 2, name: article.title })).toBeVisible();
       }
-    })
+    });
   },
-}
+};
 
 export const Empty: Story = {
   args: { state: createAppState() },
   play: async ({ canvasElement, args, userEvent }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('0 篇符合条件')).toBeVisible()
-    await expect(canvas.getByRole('heading', { name: '还没有文章，先带几个来源进来。' })).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: '清除筛选' })).not.toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('button', { name: '前往订阅源' }))
-    await expect(args.navigate).toHaveBeenCalledWith('feeds')
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('0 篇符合条件')).toBeVisible();
+    await expect(
+      canvas.getByRole('heading', { name: '还没有文章，先带几个来源进来。' }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: '清除筛选' })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: '前往订阅源' }));
+    await expect(args.navigate).toHaveBeenCalledWith('feeds');
   },
-}
+};

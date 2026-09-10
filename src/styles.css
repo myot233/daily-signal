@@ -1,5 +1,5 @@
-@import "tailwindcss" source("./");
-@import "tw-animate-css";
+@import 'tailwindcss' source("./");
+@import 'tw-animate-css';
 
 @theme inline {
   --color-paper: var(--paper);
@@ -26,8 +26,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-serif: "Iowan Old Style", "Palatino Linotype", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+  --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-serif:
+    'Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'Noto Serif CJK SC', Georgia, serif;
 }
 
 :root {
@@ -55,18 +56,65 @@
 }
 
 @layer base {
-  * { border-color: var(--border); }
-  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 14px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
-  h1, h2, h3, p { margin: 0; }
-  button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
-  button:not(:disabled), summary { cursor: pointer; }
-  a { color: inherit; }
-  button, input, textarea, select { font: inherit; }
-  :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
-  ::selection { background: #e8c6b5; color: #302e29; }
-  [hidden] { display: none !important; }
+  * {
+    border-color: var(--border);
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  a {
+    color: inherit;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+  }
+  ::selection {
+    background: #e8c6b5;
+    color: #302e29;
+  }
+  [hidden] {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
