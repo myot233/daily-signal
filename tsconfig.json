@@ -6,5 +6,5 @@
     "resolveJsonModule": true, "noEmit": true, "allowImportingTsExtensions": true,
     "baseUrl": ".", "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "server", "shared", "vite.config.ts", "drizzle.config.ts"]
+  "include": ["src", "server", "shared", ".storybook", "vite.config.ts", "vitest.config.ts", "drizzle.config.ts"]
 }
