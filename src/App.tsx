@@ -272,7 +272,7 @@ export default function App() {
     : null;
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh pl-59.5 max-[1150px]:pl-53.5 max-[800px]:pl-47.5 max-[640px]:pl-0">
       <a
         href="#main-content"
         className="fixed z-100 top-3 left-3 py-2.5 px-4.5 bg-primary text-white -translate-y-[160%] rounded-[6px] focus:translate-y-0"
@@ -362,7 +362,7 @@ export default function App() {
         </div>
       </aside>
       <main
-        className="max-w-375 ml-59.5 pt-0 px-12 pb-5.5 min-h-dvh min-[1700px]:px-17.5 max-[1150px]:ml-53.5 max-[1150px]:px-7.5 max-[800px]:ml-47.5 max-[800px]:px-5.5 max-[640px]:ml-0 max-[640px]:pt-0 max-[640px]:px-5 max-[640px]:pb-5"
+        className="w-full pt-0 px-12 pb-5.5 min-h-dvh min-[1700px]:px-17.5 max-[1150px]:px-7.5 max-[800px]:px-5.5 max-[640px]:pt-0 max-[640px]:px-5 max-[640px]:pb-5"
         id="main-content"
         tabIndex={-1}
       >
