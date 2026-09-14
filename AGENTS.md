@@ -12,6 +12,7 @@ Daily Signal 是本地优先的 RSS / Atom 阅读与 AI 日报应用，包含订
 | `src/components/`                                            | 业务视图；`ui/` 为复用的 Radix UI 基础组件                        |
 | `src/lib/`                                                   | 类型化 RPC 客户端、React Query 查询、Jotai 草稿状态及共享 UI 样式 |
 | `src/styles.css`                                             | Tailwind 入口、主题变量、基础样式与减少动画偏好                   |
+| `config.ts`、`.env.example`                                  | 服务端运行配置、环境变量加载与校验                                |
 | `src/stories/fixtures.ts`                                    | 确定性的 Storybook 数据工厂                                       |
 | `shared/types.ts`、`shared/contract.ts`、`shared/providers/` | 前后端共享的 Zod schema、oRPC 契约和供应商定义                    |
 | `server/http/`、`server/rpc/`                                | HTTP 安全边界、RPC 输入输出与错误映射                             |
@@ -28,6 +29,7 @@ Daily Signal 是本地优先的 RSS / Atom 阅读与 AI 日报应用，包含订
 ## 环境与常用命令
 
 - Node.js 最低 24；本地建议使用与 CI 相同的 Node.js 24。使用 `packageManager` 指定的 pnpm，不混用 npm / yarn，不新增其他锁文件。
+- 复制 `.env.example` 为 `.env` 配置运行模式、回环监听地址、端口、数据库路径和退出超时。系统环境变量优先于 `.env`；服务端与构建配置统一从根目录 `config.ts` 读取，不在业务模块直接读取 `process.env`。
 - 首次安装使用下面的顺序：先链接依赖中的 `node-gyp`，再执行原生模块构建并安装 Git hooks。`--ignore-scripts` 不是最终安装状态，不能省略 `pnpm rebuild`。
 
 ```sh

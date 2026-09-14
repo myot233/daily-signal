@@ -2,6 +2,7 @@ node_modules/
 dist/
 data/
 .env*
+!.env.example
 *.log
 .DS_Store
 storybook-static/

@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname } from 'node:path';
+import { config } from '../../../config';
 import { bootstrapDatabase } from './bootstrap';
 
-const dbPath = process.env.DATABASE_PATH ?? resolve('data/daily-signal.sqlite');
+const dbPath = config.database.path;
 if (dbPath !== ':memory:') mkdirSync(dirname(dbPath), { recursive: true, mode: 0o700 });
 export const sqlite = new Database(dbPath);
 sqlite.pragma('journal_mode = WAL');

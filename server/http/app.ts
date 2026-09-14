@@ -7,9 +7,11 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     const portSuffix = req.socket.localPort === 80 ? '' : `:${req.socket.localPort}`;
-    const localHost =
-      req.headers.host === `localhost${portSuffix}` ||
-      req.headers.host === `127.0.0.1${portSuffix}`;
+    const localHost = [
+      `localhost${portSuffix}`,
+      `127.0.0.1${portSuffix}`,
+      `[::1]${portSuffix}`,
+    ].includes(req.headers.host ?? '');
     if (!localHost || req.headers['sec-fetch-site'] === 'cross-site') {
       res.status(403).json({ error: '仅允许本地同源访问。' });
       return;

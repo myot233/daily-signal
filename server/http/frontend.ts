@@ -4,13 +4,14 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import type { Express } from 'express';
 import { createServer } from 'vite';
+import { config } from '../../config';
 
 export async function mountFrontend(
   app: Express,
   server: Server,
 ): Promise<(() => Promise<void>) | undefined> {
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  if (process.env.NODE_ENV === 'production') {
+  if (config.environment === 'production') {
     const dist = fileURLToPath(new URL('../../dist/', import.meta.url));
     app.use(express.static(dist));
     app.get('/{*path}', (_req, res) => {
