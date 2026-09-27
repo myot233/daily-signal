@@ -13,7 +13,7 @@ const feed = {
   id: 'layout-feed',
   title: '工程实践与开源工具：一份较长名称的技术订阅',
   url: 'https://example.com/feed.xml',
-  siteUrl: 'https://example.com',
+  siteUrl: window.location.origin,
   category: '工程实践',
   createdAt,
   lastFetchedAt: createdAt,
