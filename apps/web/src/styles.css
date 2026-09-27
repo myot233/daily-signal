@@ -233,6 +233,10 @@
   padding: 0 20px 20px;
   overflow: auto;
 }
+.app-main > .feed-refresh-progress {
+  flex-shrink: 0;
+  margin: 10px 20px 0;
+}
 .view-heading {
   display: flex;
   align-items: center;
@@ -534,6 +538,9 @@
   }
   .app-content {
     padding: 0 14px 16px;
+  }
+  .app-main > .feed-refresh-progress {
+    margin-inline: 14px;
   }
   .view-heading {
     min-height: 58px;
