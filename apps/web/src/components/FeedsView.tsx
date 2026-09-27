@@ -192,12 +192,12 @@ export function FeedsView({
                 <Rss size={20} />
               </div>
               <div className="min-w-0 flex-1 max-[640px]:basis-[calc(100%_-_50px)]">
-                <div className="flex items-center flex-wrap gap-2.5 [&_h3]:font-semibold [&_h3]:text-[14px] [&_h3]:wrap-anywhere [&_[data-slot=badge]]:whitespace-normal [&_[data-slot=badge]]:wrap-anywhere [&_[data-slot=badge]]:max-w-full max-[640px]:[&_h3]:text-[13px]">
-                  <h3>{feed.title}</h3>
+                <div className="flex items-center flex-wrap gap-2.5 [&_h2]:font-semibold [&_h2]:text-[14px] [&_h2]:wrap-anywhere [&_[data-slot=badge]]:whitespace-normal [&_[data-slot=badge]]:wrap-anywhere [&_[data-slot=badge]]:max-w-full max-[640px]:[&_h2]:text-[13px]">
+                  <h2>{feed.title}</h2>
                   <Badge variant="outline">{feed.category || '未分类'}</Badge>
                 </div>
                 <a
-                  className="flex items-center gap-1.25 w-fit max-w-full text-[#8f8879] text-[10px] wrap-anywhere mt-1 [&_svg]:shrink-0"
+                  className="flex items-center gap-1.25 w-fit max-w-full text-muted-foreground text-[10px] wrap-anywhere mt-1 [&_svg]:shrink-0"
                   href={safeUrl(feed.url)}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -210,14 +210,14 @@ export function FeedsView({
                     刷新失败：{feed.error}
                   </p>
                 ) : (
-                  <p className="text-[#96907f] text-[10px] mt-1.5 wrap-anywhere">
+                  <p className="text-muted-foreground text-[10px] mt-1.5 wrap-anywhere">
                     {feed.lastFetchedAt
                       ? `上次更新 ${formatDate(feed.lastFetchedAt, true)}`
                       : '尚未刷新，等待获取文章'}
                   </p>
                 )}
               </div>
-              <div className="feed-count flex flex-col text-center text-[#8e8674] text-[9px] min-w-12.5 [&_strong]:text-[#625a49] [&_strong]:text-[17px] [&_strong]:font-sans [&_strong]:font-normal [&_strong]:leading-normal max-[800px]:min-w-7.5 max-[640px]:[&_strong]:text-[17px]">
+              <div className="feed-count flex flex-col text-center text-muted-foreground text-[9px] min-w-12.5 [&_strong]:text-[#625a49] [&_strong]:text-[17px] [&_strong]:font-sans [&_strong]:font-normal [&_strong]:leading-normal max-[800px]:min-w-7.5 max-[640px]:[&_strong]:text-[17px]">
                 <strong>{feed.articleCount}</strong>
                 <span>篇文章</span>
               </div>
@@ -236,7 +236,7 @@ export function FeedsView({
       ) : (
         <div className={ui.emptyState}>
           <Rss size={30} strokeWidth={1.3} />
-          <h3>暂无订阅</h3>
+          <h2>暂无订阅</h2>
           <p>添加 RSS / Atom 地址，或导入 OPML。</p>
           <Button variant="outline" onClick={() => setAdding(true)} disabled={!!busy}>
             <Plus />

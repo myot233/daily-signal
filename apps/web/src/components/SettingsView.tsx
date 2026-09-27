@@ -919,6 +919,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
           </section>
         ) : (
           <Card
+            data-spacing="empty-state"
             className={`items-center p-10 text-center shadow-none ${!providerId ? 'max-[900px]:hidden' : ''}`}
           >
             <ShieldCheck size={28} className="text-primary" />

@@ -13,6 +13,7 @@
     "test:server": "turbo run test:server",
     "test:storybook": "turbo run test:storybook",
     "test:storybook:watch": "turbo run test:storybook:watch",
+    "ui:audit": "node scripts/ui-audit.mjs",
     "storybook": "turbo run storybook --",
     "build-storybook": "turbo run build-storybook",
     "lint": "turbo run lint lint:root",
@@ -24,7 +25,7 @@
     "fmt:check": "oxfmt --check",
     "format:server": "oxfmt packages/config packages/api packages/ai packages/database packages/feeds packages/network packages/providers packages/settings apps/web/server",
     "format:server:check": "oxfmt --check packages/config packages/api packages/ai packages/database packages/feeds packages/network packages/providers packages/settings apps/web/server",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm ui:audit",
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "desktop:prepare": "pnpm build && node scripts/prepare-desktop.mjs",
@@ -45,7 +46,7 @@
     "turbo": "^2.11.4"
   },
   "lint-staged": {
-    "*": "oxfmt --no-error-on-unmatched-pattern"
+    "*": "node scripts/check-staged.mjs"
   },
   "engines": {
     "node": ">=24.0.0"

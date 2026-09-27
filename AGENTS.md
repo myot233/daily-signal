@@ -70,17 +70,19 @@ pnpm check && pnpm build && pnpm build-storybook
 | `pnpm typecheck`           | Turbo 调度各代码包的 `tsc --noEmit`；包含前后端、共享契约、stories 和测试配置 |
 | `pnpm test:server`         | `tsx --test` 执行各包中的 `src/**/*.test.ts`，使用 Node.js 原生测试框架       |
 | `pnpm test:storybook`      | Vitest `storybook` project，在真实 Chromium 中执行 stories 的交互与无障碍检查 |
+| `pnpm ui:audit`            | Chromium 审查整页 stories 的 8 种视口；检查几何间距、溢出、对齐，输出报告     |
 | `pnpm test`                | 依次执行服务端测试和 Storybook 测试                                           |
-| `pnpm check`               | 依次执行全仓格式检查、lint、类型检查和 `pnpm test`                            |
+| `pnpm check`               | 依次执行全仓格式检查、lint、类型检查、`pnpm test` 和 `pnpm ui:audit`          |
 | `pnpm build`               | 类型检查与 Vite 生产构建，输出 `apps/web/dist/`                               |
 | `pnpm build-storybook`     | Storybook 静态构建，输出 `apps/web/storybook-static/`                         |
 
 - 开发中可以只跑受影响的测试以缩短反馈；最终不能以局部通过替代完整门禁。并行修改先汇合，再运行最终检查，避免检查半成品。
-- pre-commit hook 使用 lint-staged 对暂存文件执行 Oxfmt，并把格式化结果重新加入暂存区；不要使用 `--no-verify` 绕过。
+- pre-commit hook 使用 `lint-staged --hide-all --diff-filter=ACMRD` 隐藏未暂存修改与未跟踪文件，执行 Oxfmt，并在 UI 输入变更（含删除）时运行 `pnpm ui:audit`；恢复工作区并将格式化结果加入暂存区。不要使用 `--no-verify` 绕过。匹配规则见 `scripts/check-staged.mjs`，审查约束与报告见 `docs/ui-audit.md`。
 - 纯文档改动且不影响代码、配置或命令实现时，可以只验证命令、路径、链接与事实；交付时明确说明没有重跑运行时测试。CI 仍按工作流执行完整检查。
 - 任何检查失败都要排查原因；不得通过 `.skip`、删除有效断言、降低检查级别、添加宽泛忽略或修改无关行为来“变绿”。修复后重跑失败项及受影响的检查。
 - 环境阻塞必须说明具体命令、错误和未验证范围，不能把未运行的检查描述为通过。
 - CI 在 push / PR 时执行完整门禁，并上传 Storybook 静态产物与失败时可用的浏览器测试截图。
+- CI 另上传 `apps/web/test-results/ui-audit` 的 HTML、JSON 与间距失败截图。UI 审查直接运行，不复用 Turbo 测试缓存，避免遗漏当前报告。
 
 ## 测试编写规范
 
@@ -107,6 +109,7 @@ pnpm check && pnpm build && pnpm build-storybook
 - 渲染真实业务组件，复用 `createAppState` 等 fixtures；stories 不得访问真实后端或第三方服务。
 - `apps/web/vitest.config.ts` 显式预构建 `@tanstack/react-query`，避免首次运行组件测试时依赖优化触发页面重载。
 - `apps/web/.storybook/preview.tsx` 已加载应用样式并提供隔离的 Jotai Provider。沿用它，不使用跨 story 的共享可变 store，不用 story 专属 CSS 掩盖组件问题。
+- 整页间距场景使用 `ui-audit` 标签与 `parameters.appShell: true` 渲染真实 App，避免组件预览容器的 padding 改变结果。新增间距规则须验证损坏布局可失败、正常布局可通过；不将几何审查称为审美判断或像素级视觉回归。
 - 涉及保存的 story 可以在父组件边界模拟内存持久化，但必须执行 action、更新保存状态并正确处理失败；不能简单返回成功而跳过动作。
 - 保持全局 `a11y.test: 'error'`。修复组件的语义、标签、焦点、键盘操作或对比度问题，不关闭规则来绕过失败。无障碍自动化通过不代表完整人工审计。
 - UI 改动除自动化测试外，还必须在应用或 Storybook 中检查实际渲染和受影响的交互；响应式改动检查桌面与窄屏，关注横向溢出、焦点恢复和弹窗可操作性。
