@@ -52,6 +52,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-variant={variant}
         className={cn(
           variant === 'drawer'
             ? 'fixed inset-y-0 right-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l bg-background shadow-lg outline-none duration-200 min-[1024px]:w-160 data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right'

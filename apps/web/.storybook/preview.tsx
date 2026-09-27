@@ -10,11 +10,15 @@ const preview: Preview = {
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
   },
   decorators: [
-    (Story) => (
+    (Story, context) => (
       <Provider>
-        <main style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+        {context.parameters.appShell ? (
           <Story />
-        </main>
+        ) : (
+          <main style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+            <Story />
+          </main>
+        )}
       </Provider>
     ),
   ],

@@ -72,12 +72,12 @@ export function ArchiveView({
               className="flex-row items-center gap-5.75 p-6 shadow-none max-[640px]:py-4.75 max-[640px]:px-3.75 max-[640px]:gap-3.75 max-[640px]:[&_>_button:last-child]:w-6.5"
               key={digest.id}
             >
-              <div className="w-18.75 shrink-0 flex flex-col items-center pr-5.5 border-r border-r-border [&_strong]:font-sans [&_strong]:text-[#9b6b49] [&_strong]:font-normal [&_strong]:text-[22px] [&_strong]:leading-[1.3] [&_span]:text-[#968976] [&_span]:text-[9px] [&_span]:whitespace-nowrap max-[640px]:w-14 max-[640px]:pr-3.5 max-[640px]:[&_strong]:text-[22px] max-[640px]:[&_span]:text-[8px]">
+              <div className="w-18.75 shrink-0 flex flex-col items-center pr-5.5 border-r border-r-border [&_strong]:font-sans [&_strong]:text-[#9b6b49] [&_strong]:font-normal [&_strong]:text-[22px] [&_strong]:leading-[1.3] [&_span]:text-muted-foreground [&_span]:text-[9px] [&_span]:whitespace-nowrap max-[640px]:w-14 max-[640px]:pr-3.5 max-[640px]:[&_strong]:text-[22px] max-[640px]:[&_span]:text-[8px]">
                 <strong>{digest.date.slice(8)}</strong>
                 <span>{digest.date.slice(0, 7).replace('-', ' / ')}</span>
               </div>
               <button
-                className="flex-1 text-left min-w-0 bg-transparent border-0 [&_h2]:font-sans [&_h2]:font-medium [&_h2]:text-[15px] [&_h2]:wrap-anywhere [&_h2_svg]:inline [&_h2_svg]:ml-2.25 [&_h2_svg]:text-[#a2957a] [&:hover_h2]:text-primary [&_p]:text-[11px] [&_p]:text-[#837a69] [&_p]:mt-1.5 [&_p]:mx-0 [&_p]:mb-0.75 [&_p]:wrap-anywhere [&_>_span]:text-[10px] [&_>_span]:text-[#9d9381] max-[640px]:[&_h2]:text-[14px] max-[640px]:[&_h2_svg]:w-3.25 max-[640px]:[&_h2_svg]:ml-1 max-[640px]:[&_p]:text-[10px] max-[640px]:[&_>_span]:text-[9px]"
+                className="flex-1 text-left min-w-0 bg-transparent border-0 [&_h2]:font-sans [&_h2]:font-medium [&_h2]:text-[15px] [&_h2]:wrap-anywhere [&_h2_svg]:inline [&_h2_svg]:ml-2.25 [&_h2_svg]:text-[#a2957a] [&:hover_h2]:text-primary [&_p]:text-[11px] [&_p]:text-muted-foreground [&_p]:mt-1.5 [&_p]:mx-0 [&_p]:mb-0.75 [&_p]:wrap-anywhere [&_>_span]:text-[10px] [&_>_span]:text-muted-foreground max-[640px]:[&_h2]:text-[14px] max-[640px]:[&_h2_svg]:w-3.25 max-[640px]:[&_h2_svg]:ml-1 max-[640px]:[&_p]:text-[10px] max-[640px]:[&_>_span]:text-[9px]"
                 onClick={() => setSelectedId(digest.id)}
               >
                 <h2>
@@ -105,7 +105,7 @@ export function ArchiveView({
       ) : (
         <div className={ui.emptyState}>
           <Archive size={32} strokeWidth={1.3} />
-          <h3>暂无日报</h3>
+          <h2>暂无日报</h2>
           <p>生成的日报会保存在这里。</p>
           <Button onClick={() => navigate('today')}>生成日报</Button>
         </div>

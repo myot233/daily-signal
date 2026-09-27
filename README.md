@@ -54,6 +54,7 @@ pnpm build               # 类型检查及 Web 生产构建
 pnpm build-storybook     # 静态组件工作台，输出 apps/web/storybook-static
 pnpm test:server
 pnpm test:storybook
+pnpm ui:audit            # 多视口间距、溢出和对齐审查，输出 HTML/JSON 与失败截图
 pnpm storybook           # 本地组件工作台，端口 6006
 pnpm format
 pnpm lint:fix
@@ -62,6 +63,8 @@ pnpm db:migrate
 ```
 
 最终 Web 门禁为 `pnpm check && pnpm build && pnpm build-storybook`。CI 保留完整测试与无障碍检查。`fmt` / `fmt:check` 是格式命令的别名，原有 `desktop:*` 命令继续可用。
+
+`pnpm check` 包含 UI 间距审查；pre-commit 在 UI 相关文件变更时检查暂存版本。报告位于 `apps/web/test-results/ui-audit/index.html`，规则、覆盖范围与浏览器配置见 [UI 间距审查](docs/ui-audit.md)。
 
 按包运行任务：
 

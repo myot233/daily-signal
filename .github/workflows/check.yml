@@ -30,6 +30,13 @@ jobs:
       - run: pnpm build
       - run: pnpm build-storybook
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-spacing-audit
+          path: apps/web/test-results/ui-audit
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         with:
           name: storybook-static
           path: apps/web/storybook-static
