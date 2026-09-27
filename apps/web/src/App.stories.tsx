@@ -113,8 +113,40 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Today: Story = {};
-export const Feeds: Story = { args: { path: '/feeds' } };
-export const Articles: Story = { args: { path: '/articles' } };
+export const Feeds: Story = {
+  args: { path: '/feeds' },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    const sidebar = within(canvas.getByRole('complementary', { name: '订阅源列表' }));
+    await expect(canvas.getByRole('heading', { level: 1, name: '订阅与文章' })).toBeVisible();
+    await userEvent.click(sidebar.getByRole('button', { name: feed.title }));
+    await expect(sidebar.getByRole('button', { name: feed.title })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(canvas.getByRole('heading', { level: 2, name: feed.title })).toBeVisible();
+    await userEvent.click(sidebar.getByRole('button', { name: /全部文章/ }));
+    await expect(canvas.getByRole('heading', { level: 2, name: '全部文章' })).toBeVisible();
+  },
+};
+export const Articles: Story = {
+  args: { path: '/articles' },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: '订阅与文章' }),
+    ).toBeVisible();
+    const menu = canvas.queryByRole('button', { name: '展开导航' });
+    if (menu) await userEvent.click(menu);
+    const nav = within(canvas.getByRole('navigation', { name: '主导航' }));
+    await expect(nav.getByRole('link', { name: /订阅与文章/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(nav.queryByRole('link', { name: /文章流/ })).not.toBeInTheDocument();
+    if (menu) await userEvent.click(canvas.getByRole('button', { name: '收起导航' }));
+  },
+};
 export const Archive: Story = { args: { path: '/archive' } };
 export const Template: Story = { args: { path: '/template' } };
 export const Settings: Story = { args: { path: '/settings' } };

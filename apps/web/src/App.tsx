@@ -2,10 +2,9 @@ import { ui } from '@daily-signal/ui/styles';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { atom, useStore } from 'jotai';
-import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
 import {
   Archive,
-  BookOpen,
   CheckCircle2,
   CircleAlert,
   FilePenLine,
@@ -21,7 +20,6 @@ import { Button } from '@daily-signal/ui/button';
 import { TodayView } from './components/TodayView';
 import { FeedsView } from './components/FeedsView';
 import { FeedRefreshProgress } from './components/FeedRefreshProgress';
-import { ArticlesView } from './components/ArticlesView';
 import { ArchiveView } from './components/ArchiveView';
 import { TemplateView } from './components/TemplateView';
 import { SettingsView } from './components/SettingsView';
@@ -38,8 +36,7 @@ import { appStateQueryOptions, feedRefreshQueryOptions } from '@daily-signal/cli
 
 const navigation = [
   { id: 'today', path: '/', label: '今日简报', icon: Newspaper },
-  { id: 'feeds', path: '/feeds', label: '订阅源', icon: Rss },
-  { id: 'articles', path: '/articles', label: '文章流', icon: BookOpen },
+  { id: 'feeds', path: '/feeds', label: '订阅与文章', icon: Rss },
   { id: 'archive', path: '/archive', label: '日报归档', icon: Archive },
   { id: 'template', path: '/template', label: '日报设置', icon: FilePenLine },
   { id: 'settings', path: '/settings', label: '模型与服务商', icon: Settings2 },
@@ -272,7 +269,7 @@ export default function App() {
   );
 
   function navigate(next: View) {
-    void routeNavigate(next === 'today' ? '/' : `/${next}`);
+    void routeNavigate(next === 'today' ? '/' : next === 'articles' ? '/feeds' : `/${next}`);
   }
   function refresh() {
     void perform('刷新订阅', async () => {
@@ -331,13 +328,9 @@ export default function App() {
                 <>
                   <item.icon size={16} />
                   <span>{item.label}</span>
-                  {state && ['feeds', 'articles', 'archive'].includes(item.id) && (
+                  {state && ['feeds', 'archive'].includes(item.id) && (
                     <span className="sidebar-count">
-                      {item.id === 'feeds'
-                        ? state.feeds.length
-                        : item.id === 'articles'
-                          ? state.articles.length
-                          : state.digests.length}
+                      {item.id === 'feeds' ? state.feeds.length : state.digests.length}
                     </span>
                   )}
                 </>
@@ -439,13 +432,17 @@ export default function App() {
             <Route
               path="/feeds"
               element={
-                props && <FeedsView {...props} refreshing={feedRefreshRunning} refresh={refresh} />
+                props && (
+                  <FeedsView
+                    {...props}
+                    refreshing={feedRefreshRunning}
+                    refresh={refresh}
+                    navigate={navigate}
+                  />
+                )
               }
             />
-            <Route
-              path="/articles"
-              element={props && <ArticlesView {...props} desktopLayout navigate={navigate} />}
-            />
+            <Route path="/articles" element={<Navigate to="/feeds" replace />} />
             <Route
               path="/archive"
               element={props && <ArchiveView {...props} navigate={navigate} />}
