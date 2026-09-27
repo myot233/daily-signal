@@ -131,6 +131,8 @@ test('lint-staged audits the index, restores local edits on failure, and include
     git('init', '--quiet');
     git('config', 'user.email', 'hook-test@example.invalid');
     git('config', 'user.name', 'Hook Test');
+    // Temporary fixture commits must not depend on the user's signing agent.
+    git('config', 'commit.gpgsign', 'false');
     await mkdir(join(cwd, 'scripts'));
     await mkdir(join(cwd, 'apps/web/src'), { recursive: true });
     await cp(new URL('./check-staged.mjs', import.meta.url), join(cwd, 'scripts/check-staged.mjs'));

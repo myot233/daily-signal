@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/service.ts",
+    "./icons": "./src/icons.ts",
     "./ingestion": "./src/ingestion.ts",
     "./opml": "./src/opml.ts",
     "./parser": "./src/parser.ts",

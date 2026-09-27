@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Rss } from 'lucide-react';
-import { safeUrl } from '@daily-signal/client';
+import { useQuery } from '@tanstack/react-query';
+import { feedIconQueryOptions } from '@daily-signal/client/query';
 import type { Feed } from '@daily-signal/domain';
 
-export function feedIconUrl(feed: Pick<Feed, 'siteUrl' | 'url'>) {
-  const website = safeUrl(feed.siteUrl) ?? safeUrl(feed.url);
-  return website ? new URL('/favicon.ico', website).href : undefined;
+export function CachedFeedIcon({ feed }: { feed: Pick<Feed, 'id' | 'siteUrl' | 'url'> }) {
+  const { data } = useQuery(feedIconQueryOptions(feed));
+  return <FeedIcon src={data ?? undefined} />;
 }
 
 export function FeedIcon({ src }: { src?: string }) {

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { Agent, MockAgent } from 'undici';
 import {
   createPublicFetcher,
+  createPublicBinaryFetcher,
   createPublicLookup,
   normalizePublicUrl,
   PublicFetchError,
@@ -39,6 +40,7 @@ async function localFixture(listener: RequestListener) {
   return {
     url: `http://fixture.example.com:${address.port}/`,
     fetchText: createPublicFetcher(agent),
+    fetchBytes: createPublicBinaryFetcher(agent),
     async close() {
       await agent.destroy();
       await new Promise<void>((resolve, reject) =>
@@ -260,7 +262,12 @@ test('credentialed GET callers can forbid redirects before a second origin is co
 });
 
 test('oversized content-length is refused and chunked oversize stops response consumption', async () => {
-  for (const declared of [true, false]) {
+  for (const [declared, binary] of [
+    [true, false],
+    [false, false],
+    [true, true],
+    [false, true],
+  ]) {
     const closed = deferred();
     const fixture = await localFixture((_request, response) => {
       response.writeHead(200, declared ? { 'content-length': '100000' } : {});
@@ -269,13 +276,41 @@ test('oversized content-length is refused and chunked oversize stops response co
     });
     try {
       await assert.rejects(
-        fixture.fetchText(fixture.url, { maxBytes: 100, timeoutMs: 2_000 }),
+        (binary ? fixture.fetchBytes : fixture.fetchText)(fixture.url, {
+          maxBytes: 100,
+          timeoutMs: 2_000,
+        }),
         (error) => error instanceof PublicFetchError && error.kind === 'oversize',
       );
       await closed.promise;
     } finally {
       await fixture.close();
     }
+  }
+});
+
+test('binary fetch preserves non-UTF8 image bytes and checks redirected destinations', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  const pool = agent.get('https://fixture.example.com');
+  const image = Buffer.from([0, 0, 1, 0, 255, 254, 128, 0]);
+  pool
+    .intercept({ path: '/favicon.ico' })
+    .reply(200, image, { headers: { 'content-type': 'image/x-icon' } });
+  pool
+    .intercept({ path: '/private' })
+    .reply(302, '', { headers: { location: 'http://127.0.0.1/icon' } });
+  const fetchBytes = createPublicBinaryFetcher(agent);
+  try {
+    assert.deepEqual(await fetchBytes('https://fixture.example.com/favicon.ico'), {
+      body: image,
+      contentType: 'image/x-icon',
+      ok: true,
+      status: 200,
+    });
+    await assert.rejects(fetchBytes('https://fixture.example.com/private'), PublicFetchError);
+  } finally {
+    await agent.close();
   }
 });
 

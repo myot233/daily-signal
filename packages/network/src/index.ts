@@ -114,11 +114,11 @@ function safeFailure(error: unknown): PublicFetchError {
 
 // The dispatcher seam is for isolated network tests; production always uses
 // the connector above, which validates DNS answers on the actual connection.
-export function createPublicFetcher(transport: Dispatcher) {
-  return async function fetchPublicText(
+export function createPublicBinaryFetcher(transport: Dispatcher) {
+  return async function fetchPublicBytes(
     value: string,
     options: FetchOptions = {},
-  ): Promise<{ text: string; status: number; ok: boolean }> {
+  ): Promise<{ body: Buffer; contentType: string; status: number; ok: boolean }> {
     let current = normalizePublicUrl(value);
     const timeoutMs = options.timeoutMs ?? 20_000;
     const maxBytes = options.maxBytes ?? 3 * 1024 * 1024;
@@ -191,9 +191,8 @@ export function createPublicFetcher(transport: Dispatcher) {
           await response.body?.cancel();
           throw new PublicFetchError('服务器响应超过允许的大小。', 'oversize');
         }
-        const decoder = new TextDecoder();
         let bytes = 0;
-        let text = '';
+        const chunks: Uint8Array[] = [];
         if (response.body) {
           const reader = response.body.getReader();
           try {
@@ -207,16 +206,20 @@ export function createPublicFetcher(transport: Dispatcher) {
                 await reader.cancel();
                 throw new PublicFetchError('服务器响应超过允许的大小。', 'oversize');
               }
-              text += decoder.decode(chunk.value, { stream: true });
+              chunks.push(chunk.value);
             }
-            text += decoder.decode();
           } finally {
             if (signal.aborted) await reader.cancel().catch(() => {});
             reader.releaseLock();
           }
         }
         signal.throwIfAborted();
-        return { text, status: response.status, ok: response.ok };
+        return {
+          body: Buffer.concat(chunks, bytes),
+          contentType: response.headers.get('content-type') ?? '',
+          status: response.status,
+          ok: response.ok,
+        };
       }
     } catch (error) {
       if (options.signal?.aborted && signal.reason === options.signal.reason)
@@ -230,4 +233,17 @@ export function createPublicFetcher(transport: Dispatcher) {
   };
 }
 
+export function createPublicFetcher(transport: Dispatcher) {
+  const fetchBytes = createPublicBinaryFetcher(transport);
+  return async (value: string, options: FetchOptions = {}) => {
+    const response = await fetchBytes(value, options);
+    return {
+      text: new TextDecoder().decode(response.body),
+      status: response.status,
+      ok: response.ok,
+    };
+  };
+}
+
 export const fetchPublicText = createPublicFetcher(dispatcher);
+export const fetchPublicBytes = createPublicBinaryFetcher(dispatcher);

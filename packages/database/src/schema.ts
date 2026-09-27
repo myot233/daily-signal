@@ -23,6 +23,11 @@ export const feeds = sqliteTable('feeds', {
   lastFetchedAt: text('last_fetched_at'),
   error: text('error'),
 });
+export const feedIcons = sqliteTable('feed_icons', {
+  url: text('url').primaryKey(),
+  dataUrl: text('data_url'),
+  nextFetchAt: integer('next_fetch_at').notNull(),
+});
 export const articles = sqliteTable(
   'articles',
   {

@@ -3,7 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
-import { appStateQueryOptions, feedRefreshQueryOptions } from '@daily-signal/client/query';
+import {
+  appStateQueryOptions,
+  feedIconQueryOptions,
+  feedRefreshQueryOptions,
+} from '@daily-signal/client/query';
 import { providerConnectionSchema } from '@daily-signal/domain/providers/schemas';
 import { createAppState } from './stories/fixtures';
 import App from './App';
@@ -84,6 +88,7 @@ function AppFixture({ path, empty }: { path: string; empty: boolean }) {
     queryClient.setQueryData(appStateQueryOptions.queryKey, empty ? createAppState() : populated);
     queryClient.setQueryDefaults(feedRefreshQueryOptions.queryKey, { staleTime: Infinity });
     queryClient.setQueryData(feedRefreshQueryOptions.queryKey, null);
+    queryClient.setQueryData(feedIconQueryOptions(feed).queryKey, null);
     return queryClient;
   });
   const [router] = useState(() =>
