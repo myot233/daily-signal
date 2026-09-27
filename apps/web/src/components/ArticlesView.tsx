@@ -14,13 +14,18 @@ const translateArticle: TranslateArticle = (input, signal) => rpc.ai.translate(i
 
 export function ArticlesView({
   state,
+  busy,
   navigate,
   translate = translateArticle,
   desktopLayout = false,
+  sourceFilter,
+  onAddFeed,
 }: ViewProps & {
   navigate: (view: View) => void;
   translate?: TranslateArticle;
   desktopLayout?: boolean;
+  sourceFilter?: { id: string; onChange: (id: string) => void };
+  onAddFeed?: () => void;
 }) {
   const defaultProvider = state.providers.find((provider) =>
     provider.models.some((model) => model.id === state.defaultProviderModelId),
@@ -45,13 +50,27 @@ export function ArticlesView({
   }, []);
   const inline = desktopLayout && wide;
   const [query, setQuery] = useState('');
-  const [feedId, setFeedId] = useState('');
-  const [preview, setPreview] = useState<{ articles: Article[]; index: number } | null>(null);
+  const [localFeedId, setLocalFeedId] = useState('');
+  const feedId = sourceFilter?.id ?? localFeedId;
+  const setFeedId = sourceFilter?.onChange ?? setLocalFeedId;
+  const [preview, setPreview] = useState<{
+    articles: Article[];
+    index: number;
+    feedId: string;
+  } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const previewTrigger = useRef<HTMLButtonElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
 
   const selectedFeed = state.feeds.some((feed) => feed.id === feedId) ? feedId : '';
+  const feed = state.feeds.find((item) => item.id === selectedFeed);
+  const Heading = sourceFilter ? 'h2' : 'h1';
+  const ArticleHeading = sourceFilter ? 'h3' : 'h2';
+  if (preview && preview.feedId !== selectedFeed) {
+    setPreview(null);
+    setPreviewOpen(false);
+  }
+
   const articles = useMemo(() => {
     const search = query.trim().toLocaleLowerCase('zh-CN');
     return state.articles.filter(
@@ -64,7 +83,11 @@ export function ArticlesView({
 
   function openPreview(index: number, trigger: HTMLButtonElement) {
     previewTrigger.current = trigger;
-    setPreview({ articles: articles.map((article) => ({ ...article })), index });
+    setPreview({
+      articles: articles.map((article) => ({ ...article })),
+      index,
+      feedId: selectedFeed,
+    });
     setPreviewOpen(true);
   }
 
@@ -97,11 +120,25 @@ export function ArticlesView({
   return (
     <div className={inline ? 'reader-workspace' : undefined}>
       <div className={ui.viewHeading}>
-        <h1 ref={heading} tabIndex={-1}>
-          文章
-        </h1>
+        <Heading ref={heading} tabIndex={-1}>
+          {sourceFilter ? feed?.title || '全部文章' : '文章'}
+        </Heading>
         <span className="text-xs text-muted-foreground">{articles.length} 篇符合条件</span>
       </div>
+      {sourceFilter && feed && (
+        <div className="subscription-feed-info">
+          <a href={safeUrl(feed.url)} target="_blank" rel="noopener noreferrer">
+            {feed.url} <ArrowUpRight size={12} aria-hidden="true" />
+          </a>
+          <p>
+            {feed.error
+              ? `刷新失败：${feed.error}`
+              : feed.lastFetchedAt
+                ? `上次更新 ${formatDate(feed.lastFetchedAt, true)}`
+                : '尚未刷新，等待获取文章'}
+          </p>
+        </div>
+      )}
       <div className="reader-filters">
         <div className="reader-search">
           <Label className="sr-only" htmlFor="article-search">
@@ -115,22 +152,26 @@ export function ArticlesView({
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
-        <Label className="sr-only" htmlFor="article-feed">
-          按来源筛选
-        </Label>
-        <select
-          id="article-feed"
-          className="h-9 max-w-52 rounded-md border border-input bg-paper px-2 text-xs"
-          value={selectedFeed}
-          onChange={(event) => setFeedId(event.target.value)}
-        >
-          <option value="">全部来源</option>
-          {state.feeds.map((feed) => (
-            <option value={feed.id} key={feed.id}>
-              {feed.title}
-            </option>
-          ))}
-        </select>
+        {!sourceFilter && (
+          <>
+            <Label className="sr-only" htmlFor="article-feed">
+              按来源筛选
+            </Label>
+            <select
+              id="article-feed"
+              className="h-9 max-w-52 rounded-md border border-input bg-paper px-2 text-xs"
+              value={selectedFeed}
+              onChange={(event) => setFeedId(event.target.value)}
+            >
+              <option value="">全部来源</option>
+              {state.feeds.map((feed) => (
+                <option value={feed.id} key={feed.id}>
+                  {feed.title}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         {(query || selectedFeed) && (
           <Button
             variant="ghost"
@@ -163,7 +204,7 @@ export function ArticlesView({
                       <span title="来源未提供发布时间，使用首次发现时间。">估计日期</span>
                     )}
                   </div>
-                  <h2>
+                  <ArticleHeading>
                     <button
                       type="button"
                       aria-haspopup={inline ? undefined : 'dialog'}
@@ -172,7 +213,7 @@ export function ArticlesView({
                     >
                       {article.title}
                     </button>
-                  </h2>
+                  </ArticleHeading>
                   <p className="line-clamp-2 text-muted-foreground wrap-anywhere">
                     {article.content.trim() || '暂无摘要'}
                   </p>
@@ -193,7 +234,9 @@ export function ArticlesView({
           ) : (
             <div className={ui.emptyState}>
               <BookOpen size={26} strokeWidth={1.5} />
-              <h2>{query || selectedFeed ? '没有匹配的文章' : '暂无文章'}</h2>
+              <ArticleHeading>
+                {query || selectedFeed ? '没有匹配的文章' : '暂无文章'}
+              </ArticleHeading>
               <p>{query || selectedFeed ? '换个关键词或清除筛选。' : '添加订阅源后获取文章。'}</p>
               {query || selectedFeed ? (
                 <Button
@@ -204,6 +247,10 @@ export function ArticlesView({
                   }}
                 >
                   清除筛选
+                </Button>
+              ) : onAddFeed ? (
+                <Button disabled={!!busy} onClick={onAddFeed}>
+                  添加订阅源
                 </Button>
               ) : (
                 <Button onClick={() => navigate('feeds')}>前往订阅源</Button>

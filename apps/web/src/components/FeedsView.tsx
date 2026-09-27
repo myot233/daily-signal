@@ -1,18 +1,7 @@
 import { ui } from '@daily-signal/ui/styles';
-import { useRef, useState } from 'react';
-import {
-  ArrowUpRight,
-  Check,
-  Download,
-  LoaderCircle,
-  Plus,
-  RefreshCw,
-  Rss,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { BookOpen, Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { Button } from '@daily-signal/ui/button';
-import { Card } from '@daily-signal/ui/card';
 import { Input } from '@daily-signal/ui/input';
 import { Label } from '@daily-signal/ui/label';
 import { Badge } from '@daily-signal/ui/badge';
@@ -24,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@daily-signal/ui/dialog';
-import { rpc, download, formatDate, safeUrl, type ViewProps } from '@daily-signal/client';
+import { rpc, download, type View, type ViewProps } from '@daily-signal/client';
 import {
   addFeedSchema,
   importOpmlSchema,
@@ -32,27 +21,7 @@ import {
   type ImportResult,
 } from '@daily-signal/domain';
 import { FeedIcon, feedIconUrl } from './FeedIcon';
-
-const recommended = [
-  {
-    title: 'Hacker News',
-    category: '技术社区',
-    url: 'https://hnrss.org/frontpage',
-    description: '开发者社区的热门讨论与新发现',
-  },
-  {
-    title: '阮一峰的网络日志',
-    category: '科技周刊',
-    url: 'https://www.ruanyifeng.com/blog/atom.xml',
-    description: '技术、思考与每周值得关注的事',
-  },
-  {
-    title: 'Simon Willison',
-    category: '人工智能',
-    url: 'https://simonwillison.net/atom/everything/',
-    description: '来自实践一线的 AI 与开源观察',
-  },
-];
+import { ArticlesView } from './ArticlesView';
 
 export function FeedsView({
   state,
@@ -61,7 +30,14 @@ export function FeedsView({
   notify,
   refresh,
   refreshing = false,
-}: ViewProps & { refresh: () => void; refreshing?: boolean }) {
+  navigate,
+}: ViewProps & { refresh: () => void; refreshing?: boolean; navigate: (view: View) => void }) {
+  const [feedId, setFeedId] = useState('');
+  const selectedFeedId = state.feeds.some((feed) => feed.id === feedId) ? feedId : '';
+  const articlePane = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    articlePane.current?.scrollTo({ top: 0 });
+  }, [selectedFeedId]);
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
@@ -69,11 +45,11 @@ export function FeedsView({
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  async function addFeed(feedUrl = url, feedCategory = category) {
+  async function addFeed() {
     const done = await perform(
       '添加订阅源',
       async () => {
-        await rpc.feeds.add(addFeedSchema.parse({ url: feedUrl, category: feedCategory }));
+        await rpc.feeds.add(addFeedSchema.parse({ url, category }));
       },
       '已添加并获取文章。',
     );
@@ -97,15 +73,15 @@ export function FeedsView({
     });
   }
   return (
-    <>
+    <section className="subscriptions-workspace">
       <div className={ui.viewHeading}>
-        <h1>订阅源</h1>
+        <h1>订阅与文章</h1>
         <Button disabled={!!busy} onClick={() => setAdding(true)}>
           <Plus />
           添加订阅源
         </Button>
       </div>
-      <div className="flex items-center justify-between flex-wrap gap-3 mt-0 mx-0 mb-3 max-[640px]:mt-5.5 max-[640px]:[&_>_.button-row]:gap-0.5 max-[640px]:[&_button]:text-[11px]">
+      <div className="subscription-toolbar">
         <span className="inline-flex gap-2.5 items-center text-[12px] font-semibold">
           我的订阅 <Badge variant="secondary">{state.feeds.length}</Badge>
         </span>
@@ -180,100 +156,67 @@ export function FeedsView({
           )}
         </div>
       )}
-      {state.feeds.length ? (
-        <div className="compact-table">
-          {state.feeds.map((feed) => (
-            <Card
-              className="flex-row items-center gap-4.25 py-5 px-5.5 shadow-none max-[800px]:gap-3 max-[800px]:py-4.5 max-[800px]:px-4 max-[640px]:flex-wrap max-[640px]:gap-3 max-[640px]:py-4.25 max-[640px]:px-3.75 max-[640px]:[&_>_.feed-count]:ml-11.5 max-[640px]:[&_>_.feed-count]:flex-row max-[640px]:[&_>_.feed-count]:items-baseline max-[640px]:[&_>_.feed-count]:gap-1.5 max-[640px]:[&_>_button]:ml-auto"
-              key={feed.id}
+      <div className="subscription-panes">
+        <aside className="subscription-sidebar" aria-label="订阅源列表">
+          <h2 className="sr-only">选择订阅源</h2>
+          <div className="subscription-sources">
+            <button
+              type="button"
+              className="subscription-source"
+              aria-pressed={!selectedFeedId}
+              onClick={() => setFeedId('')}
             >
-              <div
-                className={`grid place-items-center shrink-0 w-10.75 h-10.75 bg-[#f4ecdf] text-[#b07848] rounded-[9px] [&.has-error]:text-[#ad573c] [&.has-error]:bg-[#f8e9df] max-[800px]:w-8.5 max-[800px]:h-8.5 ${feed.error ? 'has-error' : ''}`}
-              >
-                <FeedIcon src={feedIconUrl(feed)} />
-              </div>
-              <div className="min-w-0 flex-1 max-[640px]:basis-[calc(100%_-_50px)]">
-                <div className="flex items-center flex-wrap gap-2.5 [&_h2]:font-semibold [&_h2]:text-[14px] [&_h2]:wrap-anywhere [&_[data-slot=badge]]:whitespace-normal [&_[data-slot=badge]]:wrap-anywhere [&_[data-slot=badge]]:max-w-full max-[640px]:[&_h2]:text-[13px]">
-                  <h2>{feed.title}</h2>
-                  <Badge variant="outline">{feed.category || '未分类'}</Badge>
-                </div>
-                <a
-                  className="flex items-center gap-1.25 w-fit max-w-full text-muted-foreground text-[10px] wrap-anywhere mt-1 [&_svg]:shrink-0"
-                  href={safeUrl(feed.url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <BookOpen size={17} aria-hidden="true" />
+              <span className="subscription-source-name">全部文章</span>
+              <span className="subscription-count">{state.articles.length}</span>
+            </button>
+            {state.feeds.map((feed) => (
+              <div className="subscription-source-row" key={feed.id}>
+                <button
+                  type="button"
+                  className="subscription-source"
+                  aria-label={feed.title}
+                  aria-pressed={selectedFeedId === feed.id}
+                  title={feed.title}
+                  onClick={() => setFeedId(feed.id)}
                 >
-                  {feed.url}
-                  <ArrowUpRight size={12} />
-                </a>
-                {feed.error ? (
-                  <p className="text-[10px] mt-1.5 wrap-anywhere text-[#b36446]">
-                    刷新失败：{feed.error}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground text-[10px] mt-1.5 wrap-anywhere">
-                    {feed.lastFetchedAt
-                      ? `上次更新 ${formatDate(feed.lastFetchedAt, true)}`
-                      : '尚未刷新，等待获取文章'}
-                  </p>
-                )}
-              </div>
-              <div className="feed-count flex flex-col text-center text-muted-foreground text-[9px] min-w-12.5 [&_strong]:text-[#625a49] [&_strong]:text-[17px] [&_strong]:font-sans [&_strong]:font-normal [&_strong]:leading-normal max-[800px]:min-w-7.5 max-[640px]:[&_strong]:text-[17px]">
-                <strong>{feed.articleCount}</strong>
-                <span>篇文章</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`删除 ${feed.title}`}
-                disabled={!!busy}
-                onClick={() => setDeleting(feed)}
-              >
-                <Trash2 size={16} />
-              </Button>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className={ui.emptyState}>
-          <Rss size={30} strokeWidth={1.3} />
-          <h2>暂无订阅</h2>
-          <p>添加 RSS / Atom 地址，或导入 OPML。</p>
-          <Button variant="outline" onClick={() => setAdding(true)} disabled={!!busy}>
-            <Plus />
-            添加订阅源
-          </Button>
-        </div>
-      )}
-      <details className="mt-5 [&_>_.quiet-note]:mt-3.75 [&_>_.quiet-note]:text-[10px] max-[640px]:mt-8">
-        <summary className="flex cursor-pointer items-center justify-between gap-3 mb-3 [&_h2]:font-sans [&_h2]:text-[13px] [&_h2]:font-semibold [&_>_span]:text-[10px] [&_>_span]:text-muted-foreground max-[640px]:[&_h2]:text-[13px] max-[640px]:[&_>_span]:text-[9px]">
-          <h2>推荐订阅</h2>
-          <span>展开</span>
-        </summary>
-        <div className="grid grid-cols-3 gap-4 max-[800px]:grid-cols-1 max-[640px]:gap-2.75">
-          {recommended.map((feed) => {
-            const subscribed = state.feeds.some((item) => item.url === feed.url);
-            return (
-              <Card
-                key={feed.url}
-                className="p-5.5 gap-2.25 shadow-none [&_.eyebrow]:text-[9px] [&_.eyebrow]:mb-0.75 [&_h3]:font-sans [&_h3]:text-[14px] [&_h3]:font-medium [&_p]:text-muted-foreground [&_p]:text-[11px] [&_p]:flex-1 [&_button]:self-start [&_button]:text-primary [&_button]:pl-0 [&_button]:mt-2 max-[1150px]:p-4.5 max-[1150px]:[&_h3]:text-[14px] max-[800px]:gap-1.75 max-[800px]:[&_button]:mt-0"
-              >
-                <span className={ui.eyebrow}>{feed.category}</span>
-                <h3>{feed.title}</h3>
-                <p>{feed.description}</p>
+                  <FeedIcon src={feedIconUrl(feed)} />
+                  <span className="subscription-source-label">
+                    <span className="subscription-source-name">{feed.title}</span>
+                    <span className="subscription-source-category">
+                      {feed.error ? '刷新失败' : feed.category || '未分类'}
+                    </span>
+                  </span>
+                  <span className="subscription-count">{feed.articleCount}</span>
+                </button>
                 <Button
                   variant="ghost"
-                  disabled={!!busy || subscribed}
-                  onClick={() => void addFeed(feed.url, feed.category)}
+                  size="icon-sm"
+                  aria-label={`删除 ${feed.title}`}
+                  disabled={!!busy}
+                  onClick={() => setDeleting(feed)}
                 >
-                  {subscribed ? <Check /> : <Plus />}
-                  {subscribed ? '已订阅' : '添加订阅'}
+                  <Trash2 size={14} />
                 </Button>
-              </Card>
-            );
-          })}
+              </div>
+            ))}
+          </div>
+          {!state.feeds.length && (
+            <p className="subscription-hint">添加 RSS / Atom 地址，或导入 OPML 开始阅读。</p>
+          )}
+        </aside>
+        <div className="subscription-articles" ref={articlePane}>
+          <ArticlesView
+            state={state}
+            busy={busy}
+            perform={perform}
+            notify={notify}
+            navigate={navigate}
+            sourceFilter={{ id: selectedFeedId, onChange: setFeedId }}
+            onAddFeed={() => setAdding(true)}
+          />
         </div>
-      </details>
+      </div>
       <Dialog
         open={adding}
         onOpenChange={(open) => {
@@ -376,6 +319,6 @@ export function FeedsView({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </section>
   );
 }
