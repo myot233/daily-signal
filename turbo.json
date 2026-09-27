@@ -52,6 +52,7 @@
     "test:server": {
       "dependsOn": ["^typecheck"],
       "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/docs/benchmarks/rss-recall/**"],
       "env": ["NODE_ENV", "TZ"]
     },
     "test:storybook": {

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "benchmark:recall": "pnpm --filter @daily-signal/ai benchmark:recall",
     "prepare": "husky",
     "dev": "turbo run dev",
     "build": "turbo run build",

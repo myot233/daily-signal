@@ -1,0 +1,86 @@
+[
+  {
+    "id": "e01",
+    "sourceIds": ["r01", "r09"],
+    "relevant": true,
+    "reason": "推理引擎发布有对照实测、复现脚本和显存取舍；两篇报道为同一事件。"
+  },
+  {
+    "id": "e02",
+    "sourceIds": ["r02"],
+    "relevant": false,
+    "reason": "只有 AI 关键词和课程营销，没有技术证据。"
+  },
+  {
+    "id": "e03",
+    "sourceIds": ["r03"],
+    "relevant": true,
+    "reason": "RAG 研究公开样本、控制变量、失败分析和适用范围。"
+  },
+  {
+    "id": "e04",
+    "sourceIds": ["r04"],
+    "relevant": true,
+    "reason": "数据库修复提供最小复现、补丁机制和升级注意事项。"
+  },
+  {
+    "id": "e05",
+    "sourceIds": ["r05"],
+    "relevant": false,
+    "reason": "内容具体但与当前技术兴趣无关。"
+  },
+  {
+    "id": "e06",
+    "sourceIds": ["r06"],
+    "relevant": true,
+    "reason": "故障复盘说明根因、解决方式、验证数据和恢复时间取舍。"
+  },
+  {
+    "id": "e07",
+    "sourceIds": ["r07"],
+    "relevant": false,
+    "reason": "工具榜单缺少能力、使用方法和限制，不能仅因开源关键词入选。"
+  },
+  {
+    "id": "e08",
+    "sourceIds": ["r08", "r16"],
+    "relevant": true,
+    "reason": "开源 CLI 提供使用方式、测试和限制；带追踪参数的转发只算一次。"
+  },
+  {
+    "id": "e10",
+    "sourceIds": ["r10"],
+    "relevant": true,
+    "reason": "模型发布提供可用产物、分开的格式与内容评测以及失败边界。"
+  },
+  {
+    "id": "e11",
+    "sourceIds": ["r11"],
+    "relevant": false,
+    "reason": "未证实的产品传闻，没有具体变化或原始证据。"
+  },
+  {
+    "id": "e12",
+    "sourceIds": ["r12"],
+    "relevant": false,
+    "reason": "招聘信息只有技术名词，未分享技术内容。"
+  },
+  {
+    "id": "e13",
+    "sourceIds": ["r13"],
+    "relevant": true,
+    "reason": "CI 缓存问题有复现、配置修复和验证结果。"
+  },
+  {
+    "id": "e14",
+    "sourceIds": ["r14"],
+    "relevant": false,
+    "reason": "摘要不足以支持判断，不能凭引擎名称和标题猜测质量。"
+  },
+  {
+    "id": "e15",
+    "sourceIds": ["r15"],
+    "relevant": true,
+    "reason": "SQL 检查工具说明功能、集成方式、测试和静态分析局限。"
+  }
+]
