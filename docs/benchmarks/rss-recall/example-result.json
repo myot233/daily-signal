@@ -1,0 +1,15 @@
+{
+  "benchmarkId": "rss-recall-v1",
+  "kind": "example",
+  "curation": {
+    "cards": [
+      { "sourceIds": ["r01", "r09"] },
+      { "sourceIds": ["r03"] },
+      { "sourceIds": ["r04"] },
+      { "sourceIds": ["r06"] },
+      { "sourceIds": ["r08"] },
+      { "sourceIds": ["r10"] },
+      { "sourceIds": ["r02"] }
+    ]
+  }
+}

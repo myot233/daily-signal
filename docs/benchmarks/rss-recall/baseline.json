@@ -1,0 +1,6 @@
+{
+  "benchmarkId": "rss-recall-v1",
+  "minRecall": 0.875,
+  "minPrecision": 0.8,
+  "maxCards": 10
+}
