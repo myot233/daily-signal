@@ -3,16 +3,23 @@ import { eq } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { config } from '../../../config';
 import {
   providerModelCapabilitiesSchema,
   providerModelOptionsSchema,
   providerOptionsSchema,
 } from '../../../shared/providers/schemas';
 import { defaultTemplate } from '../../modules/settings/defaults';
+import { curationSettingsSchema } from '../../../shared/curation';
 import { providerCredentials, providerModels, providers, settings } from './schema';
 
 export function bootstrapDatabase(db: BetterSQLite3Database, sqlite: Database.Database): void {
-  migrate(db, { migrationsFolder: fileURLToPath(new URL('../../../drizzle', import.meta.url)) });
+  migrate(db, {
+    migrationsFolder: config.desktop.resources
+      ? resolve(config.desktop.resources, 'drizzle')
+      : fileURLToPath(new URL('../../../drizzle', import.meta.url)),
+  });
   const insertedSettings = db
     .insert(settings)
     .values({
@@ -23,6 +30,7 @@ export function bootstrapDatabase(db: BetterSQLite3Database, sqlite: Database.Da
         template: defaultTemplate,
         deepseekThinking: 'disabled',
         autoDigest: { enabled: false, time: '20:00' },
+        curation: curationSettingsSchema.parse({}),
       },
     })
     .onConflictDoNothing()

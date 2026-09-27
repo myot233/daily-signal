@@ -7,6 +7,7 @@ import viteConfig from './vite.config';
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    optimizeDeps: { include: ['@tanstack/react-query'] },
     test: {
       projects: [
         {
@@ -22,7 +23,9 @@ export default mergeConfig(
             browser: {
               enabled: true,
               headless: true,
-              provider: playwright(),
+              provider: playwright({
+                launchOptions: { channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL },
+              }),
               instances: [{ browser: 'chromium' }],
             },
             setupFiles: ['./.storybook/vitest.setup.ts'],

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { curationSettingsSchema } from '../../../shared/curation';
 
 // Each subprocess selects its database before dynamically loading the initialization boundary.
 function run(databasePath: string, code: string) {
@@ -70,6 +71,7 @@ test('legacy database migrates URL, model, template, thinking and key exactly on
     assert.deepEqual(migrated.state.settings, {
       ...value,
       autoDigest: { enabled: false, time: '20:00' },
+      curation: curationSettingsSchema.parse({}),
     });
     assert.equal(migrated.state.providers.length, 1);
     assert.equal(migrated.state.providers[0].protocol, 'openai-chat-completions');

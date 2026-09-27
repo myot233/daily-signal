@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Daily Signal",
+  "version": "1.0.0",
+  "identifier": "com.myot.daily-signal",
+  "build": {
+    "beforeDevCommand": "pnpm desktop:prepare",
+    "beforeBuildCommand": "pnpm desktop:prepare",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": { "capabilities": [], "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "category": "News",
+    "shortDescription": "本地优先的 RSS 阅读与 AI 日报",
+    "externalBin": ["binaries/daily-signal-node"],
+    "resources": { "../.desktop/resources/": "backend/" },
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns"],
+    "macOS": { "minimumSystemVersion": "12.0" }
+  }
+}

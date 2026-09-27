@@ -62,7 +62,14 @@ beforeEach(() => {
     .run();
   db.update(settings)
     .set({
-      value: { ...getSettings(), baseUrl: 'https://api.openai.com/v1', model: 'test-model' },
+      // This suite protects the existing full-template mode. Curated generation
+      // has its own end-to-end provider and persistence coverage.
+      value: {
+        ...getSettings(),
+        curation: { ...getSettings().curation, enabled: false },
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'test-model',
+      },
       apiKey: null,
     })
     .where(eq(settings.id, 1))

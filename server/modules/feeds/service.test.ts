@@ -172,9 +172,11 @@ test('deleting a source while refresh is in flight never resurrects it or its ar
   assert.deepEqual(db.select().from(articles).all(), []);
 });
 
-test('nested OPML preserves Chinese categories and escaped URLs through export/import; partial failures persist successes', async () => {
+test('OPML saves subscriptions without fetching; categories and unreachable sources survive roundtrip', async () => {
+  let requests = 0;
   const service = createFeedService({
     fetchText: async (url) => {
+      requests++;
       if (url.includes('failed.')) throw new PublicFetchError('网络请求失败。');
       return { text: rssFixture(), status: 200, ok: true };
     },
@@ -183,10 +185,13 @@ test('nested OPML preserves Chinese categories and escaped URLs through export/i
     `<outline text="技术 &amp; AI"><outline title="中文">${outline('https://one.example.com/rss?a=1&amp;b=2')}${outline('https://two.example.com/rss')}${outline('https://one.example.com/rss?a=1&amp;b=2')}${outline('https://failed.example.com/rss')}</outline></outline>`,
   );
   const result = await service.importOpml(input);
-  assert.equal(result.imported, 2);
+  assert.equal(result.imported, 3);
   assert.equal(result.skipped, 1);
+  assert.equal(requests, 0);
+  assert.deepEqual(result.errors, []);
+  const refresh = await service.refreshFeeds();
   assert.deepEqual(
-    result.errors.map((error) => error.url),
+    refresh.errors.map((error) => error.url),
     ['https://failed.example.com/rss'],
   );
   const expected = listFeeds()
@@ -195,14 +200,14 @@ test('nested OPML preserves Chinese categories and escaped URLs through export/i
   assert.ok(expected.every(([, category]) => category === '技术 & AI / 中文'));
   const exported = exportOpml();
   db.delete(feeds).run();
-  assert.deepEqual(await service.importOpml(exported), { imported: 2, skipped: 0, errors: [] });
+  assert.deepEqual(await service.importOpml(exported), { imported: 3, skipped: 0, errors: [] });
   assert.deepEqual(
     listFeeds()
       .map((feed) => [feed.url, feed.category])
       .sort(),
     expected,
   );
-  assert.deepEqual(await service.importOpml(exported), { imported: 0, skipped: 2, errors: [] });
+  assert.deepEqual(await service.importOpml(exported), { imported: 0, skipped: 3, errors: [] });
 });
 
 test('OPML rejects DTD, invalid structure, bytes, count and depth before any network work', async () => {
@@ -249,26 +254,65 @@ test('DTD feed is rejected without inserting a source', async () => {
   assert.deepEqual(listFeeds(), []);
 });
 
-test('OPML import and refresh bound simultaneous source work to four', async () => {
+test('refresh uses eight slots, keeps each hostname capped at four, and bypasses blocked hosts', async () => {
   let active = 0;
   let peak = 0;
+  const activeHosts = new Map<string, number>();
+  const order: string[] = [];
+  let hostPeak = 0;
   const service = createFeedService({
-    fetchText: async () => {
+    fetchText: async (url) => {
+      const host = new URL(url).hostname;
+      order.push(host);
+      activeHosts.set(host, (activeHosts.get(host) ?? 0) + 1);
+      hostPeak = Math.max(hostPeak, activeHosts.get(host)!);
       active++;
       peak = Math.max(peak, active);
       await new Promise<void>((resolve) => setImmediate(resolve));
       active--;
+      activeHosts.set(host, activeHosts.get(host)! - 1);
       return { text: rssFixture(), status: 200, ok: true };
     },
   });
   const result = await service.importOpml(
-    opml(Array.from({ length: 9 }, (_, i) => outline(`https://news.example.com/${i}`)).join('')),
+    opml(
+      [
+        ...Array.from({ length: 9 }, (_, i) => outline(`https://news.example.com/${i}`)),
+        ...Array.from({ length: 9 }, (_, i) => outline(`https://other${i}.example.com/rss`)),
+      ].join(''),
+    ),
   );
-  assert.equal(result.imported, 9);
-  assert.equal(peak, 4);
-  peak = 0;
-  assert.deepEqual(await service.refreshFeeds(), { added: 0, errors: [] });
-  assert.equal(peak, 4);
+  assert.equal(result.imported, 18);
+  assert.equal(peak, 0);
+  assert.deepEqual(
+    await service.refreshFeeds(listFeeds().sort((a, b) => a.url.localeCompare(b.url))),
+    { added: 54, errors: [] },
+  );
+  assert.equal(peak, 8);
+  assert.equal(hostPeak, 4);
+  assert.ok(order.slice(0, 8).includes('other0.example.com'));
+});
+
+test('OPML preserves titles, skips duplicates and rejects private or credential-bearing URLs locally', async () => {
+  const service = createFeedService({
+    fetchText: async () => {
+      throw new Error('must not fetch');
+    },
+  });
+  const result = await service.importOpml(
+    opml(
+      '<outline text="技术 &amp; 实践" xmlUrl="https://news.example.com/rss"/>' +
+        outline('https://news.example.com/rss#duplicate') +
+        outline('http://127.0.0.1/rss') +
+        outline('https://user:secret@example.com/rss'),
+    ),
+  );
+  assert.equal(result.imported, 1);
+  assert.equal(result.skipped, 1);
+  assert.equal(result.errors.length, 2);
+  assert.equal(listFeeds()[0]?.title, '技术 & 实践');
+  assert.equal(listFeeds()[0]?.lastFetchedAt, null);
+  assert.equal(listArticles().length, 0);
 });
 
 test('invalid RSS and Atom dates become estimated instead of dropping the source', async () => {

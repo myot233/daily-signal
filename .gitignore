@@ -9,3 +9,7 @@ storybook-static/
 coverage/
 test-results/
 **/__screenshots__/
+.desktop/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/

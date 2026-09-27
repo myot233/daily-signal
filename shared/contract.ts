@@ -9,13 +9,15 @@ import {
   digestGenerationSubscriptionSchema,
   digestInputSchema,
   feedSchema,
+  feedRefreshStatusSchema,
   idSchema,
   importOpmlSchema,
   importResultSchema,
   okSchema,
-  refreshResultSchema,
   settingsSchema,
   settingsUpdateSchema,
+  translationInputSchema,
+  translationResultSchema,
 } from './types';
 import {
   providerConnectionSchema,
@@ -47,7 +49,8 @@ export const contract = {
   feeds: {
     add: procedure.input(addFeedSchema).output(feedSchema),
     remove: procedure.input(idSchema).output(okSchema),
-    refresh: procedure.output(refreshResultSchema),
+    refresh: procedure.output(feedRefreshStatusSchema),
+    status: procedure.output(feedRefreshStatusSchema.nullable()),
     import: procedure.input(importOpmlSchema).output(importResultSchema),
     export: procedure.output(z.object({ opml: z.string() })),
   },
@@ -65,7 +68,10 @@ export const contract = {
     remove: procedure.input(providerModelRemoveSchema).output(okSchema),
   },
   defaultModel: { set: procedure.input(setDefaultProviderModelSchema).output(okSchema) },
-  ai: { test: procedure.input(connectionSchema).output(okSchema) },
+  ai: {
+    test: procedure.input(connectionSchema).output(okSchema),
+    translate: procedure.input(translationInputSchema).output(translationResultSchema),
+  },
   digests: {
     generate: procedure.input(digestInputSchema).output(digestGenerationStartSchema),
     subscribe: procedure

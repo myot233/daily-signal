@@ -8,6 +8,9 @@
     "coverage/**",
     "test-results/**",
     "node_modules/**",
-    "drizzle/meta/**"
+    "drizzle/meta/**",
+    ".desktop/**",
+    "src-tauri/target/**",
+    "src-tauri/gen/**"
   ]
 }

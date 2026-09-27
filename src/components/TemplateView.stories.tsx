@@ -91,6 +91,72 @@ export const Default: Story = {
   },
 };
 
+export const ChooseInterestTags: Story = {
+  play: async ({ canvasElement, args, userEvent }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'AI' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'AI' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Rust' }));
+    await userEvent.type(canvas.getByRole('textbox', { name: '自定义兴趣标签' }), '分布式系统');
+    await userEvent.click(canvas.getByRole('button', { name: '添加兴趣标签' }));
+    await expect(canvas.getByRole('button', { name: '分布式系统' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: '保存兴趣与筛选' }));
+    await expect(await canvas.findByRole('status')).toHaveTextContent('兴趣与筛选已保存');
+    await expect(args.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        curation: expect.objectContaining({ tags: ['软件工程', '开源工具', 'Rust', '分布式系统'] }),
+      }),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Rust' }));
+    await userEvent.click(canvas.getByRole('button', { name: '放弃筛选修改' }));
+    await expect(canvas.getByRole('button', { name: 'Rust' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(canvas.getByRole('button', { name: '保存兴趣与筛选' })).toBeDisabled();
+  },
+};
+
+export const EmptyTagsCannotSave: Story = {
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    for (const tag of ['AI', '软件工程', '开源工具'])
+      await userEvent.click(canvas.getByRole('button', { name: tag }));
+    await expect(canvas.getByRole('alert')).toHaveTextContent('至少选择一个兴趣标签');
+    await expect(canvas.getByRole('button', { name: '保存兴趣与筛选' })).toBeDisabled();
+    await userEvent.click(canvas.getByRole('button', { name: 'Rust' }));
+    await userEvent.type(canvas.getByRole('textbox', { name: '自定义兴趣标签' }), 'rust');
+    await userEvent.click(canvas.getByRole('button', { name: '添加兴趣标签' }));
+    await expect(canvas.getAllByRole('button', { name: /^rust$/i })).toHaveLength(1);
+    await expect(canvas.getByRole('button', { name: '保存兴趣与筛选' })).toBeEnabled();
+  },
+};
+
+export const RejectedInterestSaveKeepsDraft: Story = {
+  args: {
+    saveSettings: fn<TemplateProps['saveSettings']>(async () => {
+      throw new Error('筛选设置保存失败。');
+    }),
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Rust' }));
+    await userEvent.click(canvas.getByRole('button', { name: '保存兴趣与筛选' }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('筛选设置保存失败');
+    await expect(canvas.getByRole('button', { name: 'Rust' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(canvas.getByRole('button', { name: '保存兴趣与筛选' })).toBeEnabled();
+  },
+};
+
 export const ConfigureAutomaticDigest: Story = {
   args: {
     state: createAppState({

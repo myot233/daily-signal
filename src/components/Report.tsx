@@ -9,6 +9,7 @@ import { download, formatDate, safeUrl } from '../lib/client';
 import type { Digest } from '../../shared/types';
 import { protocolLabels } from '../../shared/providers/catalog';
 import { Source, Sources, SourcesContent, SourcesTrigger } from './ai-elements/sources';
+import { CuratedReport } from './CuratedReport';
 
 export function RichMarkdown({ content }: { content: string }) {
   return (
@@ -93,6 +94,8 @@ export function Report({ digest }: { digest: Digest }) {
       'text/html;charset=utf-8',
     );
   }
+  if (digest.curation)
+    return <CuratedReport digest={digest} curation={digest.curation} exportHtml={exportHtml} />;
   return (
     <article className="max-w-210 mt-6.25 mx-auto mb-0 bg-paper border border-[#dad6c8] py-8.25 px-11.75 shadow-[0_5px_20px_#35281105] min-w-0 max-[1150px]:px-7.5 max-[640px]:py-5.5 max-[640px]:px-5 max-[640px]:mt-5">
       <div className="flex flex-wrap gap-3 justify-between items-center border-b border-b-border pb-5 mb-6.5 [&_button]:text-[10px] max-[640px]:gap-2.25 max-[640px]:mb-5.5 max-[640px]:[&_.button-row]:gap-0 max-[640px]:[&_button]:text-[9px] max-[640px]:[&_button]:px-1.75">

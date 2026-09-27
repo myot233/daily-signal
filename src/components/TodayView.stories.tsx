@@ -122,17 +122,16 @@ export const ReadyToGenerate: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement);
 
-    await expect(
-      canvas.getByRole('heading', { level: 1, name: '把今天的文章，变成可追溯的洞见。' }),
-    ).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1, name: '今日简报' })).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: '模型' })).toHaveValue(modelId);
     await expect(canvas.getByText('1 篇缓存文章')).toBeVisible();
-    await expect(canvas.getByText('OpenAI 工作连接 · OpenAI Responses')).toBeVisible();
     await expect(canvas.getByRole('button', { name: '生成日报' })).toBeEnabled();
 
-    await userEvent.click(canvas.getByRole('button', { name: '查看生成流程与数据边界' }));
-    await expect(canvas.getByText('按当前模板提炼主题、事实与脉络')).toBeVisible();
-    await expect(canvas.getByText('成功后自动保存新版本和来源快照')).toBeVisible();
+    await userEvent.click(canvas.getByText('生成详情'));
+    await expect(canvas.getByText('OpenAI 工作连接 · OpenAI Responses')).toBeVisible();
+    await expect(
+      canvas.getByText('使用缓存文章，成功后自动归档。失败不会覆盖已有日报。'),
+    ).toBeVisible();
   },
 };
 
@@ -171,7 +170,7 @@ export const Generating: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByText('已读取 12 篇文章，规划为 3 个批次')).toBeVisible();
-    await expect(canvas.getByText(/这些状态来自本地 SQLite 事件队列。/)).toBeVisible();
+    await expect(canvas.getByText('离开页面后会继续生成。')).toBeVisible();
     await expect(canvas.getByRole('button', { name: '正在生成' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: '正在提取资料批次 2/3' })).toHaveAttribute(
       'aria-expanded',
@@ -190,7 +189,7 @@ export const GeneratedWithSources: Story = {
     await expect(canvas.getByRole('heading', { level: 2, name: digest.title })).toBeVisible();
 
     await userEvent.click(canvas.getByRole('button', { name: '查看 1 条参考来源' }));
-    const source = canvas.getByRole('link', { name: article.title });
+    const source = await canvas.findByRole('link', { name: article.title });
     await expect(source).toHaveAttribute('href', article.url);
     await expect(source).toHaveAttribute('target', '_blank');
     await expect(source).toHaveAttribute('rel', 'noopener noreferrer');
@@ -202,7 +201,7 @@ export const NeedsSetup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByText('尚未选择模型')).toBeVisible();
+    await expect(canvas.getByRole('combobox', { name: '模型' })).toHaveValue('');
     await expect(canvas.getByText('生成前，请选择一个已启用的连接与模型。')).toBeVisible();
     await expect(canvas.getByRole('button', { name: '生成日报' })).toBeDisabled();
   },
