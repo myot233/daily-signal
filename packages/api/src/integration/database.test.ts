@@ -139,3 +139,68 @@ test('fresh database bootstraps once, while deleting all connections remains del
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('icon cache migration preserves subscriptions and cached bytes survive an offline restart', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'daily-signal-icons-'));
+  const databasePath = join(directory, 'state.sqlite');
+  try {
+    const legacyMigrations = join(directory, 'migrations');
+    mkdirSync(join(legacyMigrations, 'meta'), { recursive: true });
+    const journal = JSON.parse(
+      readFileSync(
+        new URL('../../../database/drizzle/meta/_journal.json', import.meta.url),
+        'utf8',
+      ),
+    );
+    journal.entries = journal.entries.slice(0, 6);
+    writeFileSync(join(legacyMigrations, 'meta/_journal.json'), JSON.stringify(journal));
+    for (const entry of journal.entries)
+      writeFileSync(
+        join(legacyMigrations, `${entry.tag}.sql`),
+        readFileSync(new URL(`../../../database/drizzle/${entry.tag}.sql`, import.meta.url)),
+      );
+    const legacy = new Database(databasePath);
+    try {
+      migrate(drizzle(legacy), { migrationsFolder: legacyMigrations });
+      legacy
+        .prepare('INSERT INTO feeds (id, url, title, site_url, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(
+          'saved-feed',
+          'https://icons.example.com/rss',
+          'My feed',
+          'https://icons.example.com',
+          '2026-09-28',
+        );
+    } finally {
+      legacy.close();
+    }
+    const first = run(
+      databasePath,
+      `
+      const { sqlite } = await import('@daily-signal/database');
+      const { createFeedIconService } = await import('@daily-signal/feeds/icons');
+      const body = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1cAAAAASUVORK5CYII=', 'base64');
+      const service = createFeedIconService({ fetchBytes: async () => ({ body, contentType: 'image/png', status: 200, ok: true }) });
+      console.log(JSON.stringify({ icon: await service.getIcon('saved-feed'), feed: sqlite.prepare('SELECT title FROM feeds WHERE id = ?').get('saved-feed').title }));
+      sqlite.close();
+    `,
+    );
+    assert.equal(first.feed, 'My feed');
+    assert.ok(first.icon.startsWith('data:image/png;base64,'));
+    const restarted = run(
+      databasePath,
+      `
+      const { sqlite } = await import('@daily-signal/database');
+      const { createFeedIconService } = await import('@daily-signal/feeds/icons');
+      let requests = 0;
+      const service = createFeedIconService({ fetchBytes: async () => { requests++; throw new Error('offline'); } });
+      console.log(JSON.stringify({ icon: await service.getIcon('saved-feed'), requests }));
+      sqlite.close();
+    `,
+    );
+    assert.equal(restarted.icon, first.icon);
+    assert.equal(restarted.requests, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

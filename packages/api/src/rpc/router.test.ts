@@ -37,6 +37,39 @@ test('typed oRPC client persists settings and returns the Zod-defined state', as
   assert.equal(reloaded.defaultTemplate, initial.defaultTemplate);
 });
 
+test('typed icon RPC reads local image data, excludes it from app state and rejects missing feeds', async () => {
+  const { db } = await import('@daily-signal/database');
+  const { feeds, feedIcons } = await import('@daily-signal/database/schema');
+  const dataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+  db.insert(feeds)
+    .values({
+      id: 'cached-feed',
+      title: 'Cached feed',
+      url: 'https://icon.example.com/rss',
+      siteUrl: 'https://icon.example.com',
+      createdAt: '2026-09-28',
+    })
+    .run();
+  db.insert(feedIcons)
+    .values({
+      url: 'https://icon.example.com/favicon.ico',
+      dataUrl,
+      nextFetchAt: Date.now() + 60_000,
+    })
+    .run();
+  try {
+    assert.equal(await rpc.feeds.icon({ id: 'cached-feed' }), dataUrl);
+    assert.equal(JSON.stringify(await rpc.state()).includes(dataUrl), false);
+    await assert.rejects(rpc.feeds.icon({ id: 'missing-icon-feed' }), { code: 'NOT_FOUND' });
+    await assert.rejects(rpc.feeds.icon({ id: '' }), { code: 'BAD_REQUEST' });
+    await rpc.feeds.remove({ id: 'cached-feed' });
+    await assert.rejects(rpc.feeds.icon({ id: 'cached-feed' }), { code: 'NOT_FOUND' });
+  } finally {
+    db.delete(feeds).where(eq(feeds.id, 'cached-feed')).run();
+    db.delete(feedIcons).where(eq(feedIcons.url, 'https://icon.example.com/favicon.ico')).run();
+  }
+});
+
 test('provider key persists privately, survives template edits, can be replaced and cleared', async () => {
   const { db } = await import('@daily-signal/database');
   const { providerCredentials, providerModels, settings } =

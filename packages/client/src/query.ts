@@ -1,5 +1,15 @@
 import { queryOptions } from '@tanstack/react-query';
+import type { Feed } from '@daily-signal/domain';
 import { rpc } from './index';
+
+export const feedIconQueryOptions = (feed: Pick<Feed, 'id' | 'siteUrl' | 'url'>) =>
+  queryOptions({
+    queryKey: ['feed-icon', feed.id, feed.siteUrl, feed.url],
+    queryFn: () => rpc.feeds.icon({ id: feed.id }),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+    networkMode: 'always',
+  });
 
 export const appStateQueryOptions = queryOptions({
   queryKey: ['app-state'],

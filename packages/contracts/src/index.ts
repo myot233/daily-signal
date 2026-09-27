@@ -47,6 +47,7 @@ const procedure = oc.errors({
 export const contract = {
   state: procedure.output(appStateSchema),
   feeds: {
+    icon: procedure.input(idSchema).output(z.string().nullable()),
     add: procedure.input(addFeedSchema).output(feedSchema),
     remove: procedure.input(idSchema).output(okSchema),
     refresh: procedure.output(feedRefreshStatusSchema),

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor, within } from 'storybook/test';
 import type { Feed } from '@daily-signal/domain';
+import { feedIconQueryOptions } from '@daily-signal/client/query';
 import { createAppState } from '../stories/fixtures';
 import { FeedsView } from './FeedsView';
 
@@ -34,7 +35,12 @@ const meta = {
   component: FeedsView,
   decorators: [
     function WithQueryClient(Story) {
-      const [client] = useState(() => new QueryClient());
+      const [client] = useState(() => {
+        const queryClient = new QueryClient();
+        for (const feed of feeds)
+          queryClient.setQueryData(feedIconQueryOptions(feed).queryKey, null);
+        return queryClient;
+      });
       return (
         <QueryClientProvider client={client}>
           <Story />

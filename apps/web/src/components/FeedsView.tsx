@@ -20,7 +20,7 @@ import {
   type Feed,
   type ImportResult,
 } from '@daily-signal/domain';
-import { FeedIcon, feedIconUrl } from './FeedIcon';
+import { CachedFeedIcon } from './FeedIcon';
 import { ArticlesView } from './ArticlesView';
 
 export function FeedsView({
@@ -180,7 +180,7 @@ export function FeedsView({
                   title={feed.title}
                   onClick={() => setFeedId(feed.id)}
                 >
-                  <FeedIcon src={feedIconUrl(feed)} />
+                  <CachedFeedIcon feed={feed} />
                   <span className="subscription-source-label">
                     <span className="subscription-source-name">{feed.title}</span>
                     <span className="subscription-source-category">
