@@ -1,0 +1,49 @@
+{
+  "name": "@daily-signal/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rpc/ai": "./src/rpc/ai.ts",
+    "./rpc/feeds": "./src/rpc/feeds.ts",
+    "./rpc/procedure": "./src/rpc/procedure.ts",
+    "./rpc/providers": "./src/rpc/providers.ts",
+    "./rpc/router": "./src/rpc/router.ts",
+    "./settings": "./src/settings.ts",
+    "./state": "./src/state.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings .",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --fix .",
+    "test:server": "tsx --test \"src/**/*.test.ts\"",
+    "test": "pnpm test:server"
+  },
+  "dependencies": {
+    "@daily-signal/ai": "workspace:*",
+    "@daily-signal/contracts": "workspace:*",
+    "@daily-signal/database": "workspace:*",
+    "@daily-signal/domain": "workspace:*",
+    "@daily-signal/feeds": "workspace:*",
+    "@daily-signal/network": "workspace:*",
+    "@daily-signal/providers": "workspace:*",
+    "@daily-signal/settings": "workspace:*",
+    "@orpc/server": "^1.15.0",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.46",
+    "@daily-signal/typescript-config": "workspace:*",
+    "@orpc/client": "^1.15.0",
+    "@orpc/contract": "^1.15.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "ai": "^7.0.96",
+    "better-sqlite3": "^13.0.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

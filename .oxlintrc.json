@@ -1,16 +1,19 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "react", "oxc"],
-  "categories": { "correctness": "error" },
+  "categories": {
+    "correctness": "error"
+  },
   "ignorePatterns": [
-    "dist/**",
-    "storybook-static/**",
-    "coverage/**",
-    "test-results/**",
-    "node_modules/**",
-    "drizzle/meta/**",
-    ".desktop/**",
-    "src-tauri/target/**",
-    "src-tauri/gen/**"
+    "**/dist/**",
+    "**/storybook-static/**",
+    "**/coverage/**",
+    "**/test-results/**",
+    "**/node_modules/**",
+    "**/drizzle/meta/**",
+    "**/.desktop/**",
+    "**/src-tauri/target/**",
+    "**/src-tauri/gen/**",
+    "**/.turbo/**"
   ]
 }

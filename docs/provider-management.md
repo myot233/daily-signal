@@ -88,14 +88,14 @@ flowchart LR
 当前模块划分：
 
 ```text
-shared/providers/catalog.ts       品牌、预设、协议与非敏感默认值
-shared/providers/schemas.ts       输入、公共响应、模型能力、测试结果
-server/modules/providers/repository.ts  连接、模型、凭据持久化与默认选择事务
-server/modules/providers/adapters.ts    协议适配器注册表、统一运行时与预算换算
-server/modules/providers/discovery.ts   模型目录查询与格式归一
-server/modules/providers/transport.ts   基于 infrastructure/network/public-fetch.ts 的受控传输
-src/components/SettingsView.tsx   连接列表、详情、模型列表、添加对话框
-src/components/ProviderIcon.tsx   Lobe 品牌映射与缺失图标回退
+packages/domain/src/providers/catalog.ts       品牌、预设、协议与非敏感默认值
+packages/domain/src/providers/schemas.ts       输入、公共响应、模型能力、测试结果
+packages/providers/src/repository.ts  连接、模型、凭据持久化与默认选择事务
+packages/providers/src/adapters.ts    协议适配器注册表、统一运行时与预算换算
+packages/providers/src/discovery.ts   模型目录查询与格式归一
+packages/providers/src/transport.ts   基于 infrastructure/network/public-fetch.ts 的受控传输
+apps/web/src/components/SettingsView.tsx   连接列表、详情、模型列表、添加对话框
+apps/web/src/components/ProviderIcon.tsx   Lobe 品牌映射与缺失图标回退
 ```
 
 后端按入口、业务模块与基础设施组织，测试与对应实现放在同一目录：

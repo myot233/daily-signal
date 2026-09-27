@@ -32,14 +32,15 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: storybook-static
-          path: storybook-static
+          path: apps/web/storybook-static
           retention-days: 7
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: browser-test-failures
           path: |
-            src/**/__screenshots__/**
-            test-results/**
+            apps/**/__screenshots__/**
+            packages/**/__screenshots__/**
+            apps/web/test-results/**
           if-no-files-found: ignore
           retention-days: 7

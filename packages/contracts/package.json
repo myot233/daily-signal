@@ -1,0 +1,23 @@
+{
+  "name": "@daily-signal/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings .",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --fix ."
+  },
+  "dependencies": {
+    "@daily-signal/domain": "workspace:*",
+    "@orpc/contract": "^1.15.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@daily-signal/typescript-config": "workspace:*",
+    "typescript": "^5.9.0"
+  }
+}

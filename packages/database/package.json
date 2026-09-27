@@ -1,0 +1,33 @@
+{
+  "name": "@daily-signal/database",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bootstrap": "./src/bootstrap.ts",
+    "./migrate": "./src/migrate.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings .",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --fix .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@daily-signal/config": "workspace:*",
+    "@daily-signal/domain": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@daily-signal/typescript-config": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.0.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

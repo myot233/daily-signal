@@ -1,0 +1,27 @@
+{
+  "name": "@daily-signal/domain",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./curation": "./src/curation.ts",
+    "./default-template": "./src/default-template.ts",
+    "./errors": "./src/errors.ts",
+    "./providers/catalog": "./src/providers/catalog.ts",
+    "./providers/draft-state": "./src/providers/draft-state.ts",
+    "./providers/schemas": "./src/providers/schemas.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings .",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --fix ."
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@daily-signal/typescript-config": "workspace:*",
+    "typescript": "^5.9.0"
+  }
+}
