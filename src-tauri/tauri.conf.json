@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm desktop:prepare",
     "beforeBuildCommand": "pnpm desktop:prepare",
-    "frontendDist": "../dist"
+    "frontendDist": "../apps/web/dist"
   },
   "app": {
     "windows": [],

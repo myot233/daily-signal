@@ -1,0 +1,7 @@
+{
+  "extends": "@daily-signal/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["react", "react-dom"]
+  },
+  "include": ["src"]
+}

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = join(root, '.desktop/resources');
 const cache = join(root, '.desktop/cache');
-const require = createRequire(import.meta.url);
+const require = createRequire(import.meta.resolve('@daily-signal/database'));
 if (process.platform !== 'darwin' || !['arm64', 'x64'].includes(process.arch)) {
   throw new Error('目前桌面打包支持 macOS（Apple Silicon / Intel），请在目标架构的 Mac 上构建。');
 }
@@ -23,7 +23,7 @@ await mkdir(output, { recursive: true });
 
 await build({
   absWorkingDir: root,
-  entryPoints: ['server/index.ts'],
+  entryPoints: ['apps/web/server/index.ts'],
   outfile: join(output, 'server.mjs'),
   bundle: true,
   platform: 'node',
@@ -35,8 +35,8 @@ await build({
     js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);',
   },
 });
-await cp(join(root, 'dist'), join(output, 'dist'), { recursive: true });
-await cp(join(root, 'drizzle'), join(output, 'drizzle'), { recursive: true });
+await cp(join(root, 'apps/web/dist'), join(output, 'dist'), { recursive: true });
+await cp(join(root, 'packages/database/drizzle'), join(output, 'drizzle'), { recursive: true });
 // Keep the native SQLite addon outside the JS bundle, including its runtime dependencies.
 const copied = new Set();
 async function copyPackage(name, from = require) {

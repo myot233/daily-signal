@@ -1,0 +1,45 @@
+{
+  "name": "@daily-signal/ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/service.ts",
+    "./analysis-cache": "./src/analysis-cache.ts",
+    "./article-document": "./src/article-document.ts",
+    "./curation": "./src/curation.ts",
+    "./daily-digest-scheduler": "./src/daily-digest-scheduler.ts",
+    "./generation-queue": "./src/generation-queue.ts",
+    "./generation-repository": "./src/generation-repository.ts",
+    "./repository": "./src/repository.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings .",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --fix .",
+    "test:server": "tsx --test \"src/**/*.test.ts\"",
+    "test": "pnpm test:server"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "4.0.13",
+    "@daily-signal/database": "workspace:*",
+    "@daily-signal/domain": "workspace:*",
+    "@daily-signal/feeds": "workspace:*",
+    "@daily-signal/network": "workspace:*",
+    "@daily-signal/providers": "workspace:*",
+    "@daily-signal/settings": "workspace:*",
+    "@mozilla/readability": "^0.6.0",
+    "ai": "^7.0.96",
+    "croner": "^10.0.1",
+    "drizzle-orm": "^0.45.2",
+    "linkedom": "^0.18.13",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.46",
+    "@daily-signal/typescript-config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

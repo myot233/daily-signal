@@ -1,0 +1,150 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [".oxlintrc.json", ".oxfmtrc.json", ".env*"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "typecheck"],
+      "outputs": ["dist/**"],
+      "env": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/docs/assets/providers/**"]
+    },
+    "build-storybook": {
+      "dependsOn": ["^build", "typecheck"],
+      "outputs": ["storybook-static/**"],
+      "env": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/docs/assets/providers/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "//#lint:root": {
+      "outputs": [],
+      "inputs": ["scripts/**", "package.json", ".oxlintrc.json"]
+    },
+    "lint:fix": {
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["^typecheck"],
+      "outputs": [],
+      "env": ["NODE_ENV", "TZ", "PLAYWRIGHT_CHROMIUM_CHANNEL"]
+    },
+    "test:server": {
+      "dependsOn": ["^typecheck"],
+      "outputs": [],
+      "env": ["NODE_ENV", "TZ"]
+    },
+    "test:storybook": {
+      "dependsOn": ["^typecheck"],
+      "outputs": [],
+      "env": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES",
+        "PLAYWRIGHT_CHROMIUM_CHANNEL"
+      ]
+    },
+    "test:storybook:watch": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES",
+        "PLAYWRIGHT_CHROMIUM_CHANNEL"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ]
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ]
+    },
+    "storybook": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ]
+    },
+    "db:generate": {
+      "cache": false,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ]
+    },
+    "db:migrate": {
+      "cache": false,
+      "passThroughEnv": [
+        "NODE_ENV",
+        "HOST",
+        "PORT",
+        "DATABASE_PATH",
+        "SHUTDOWN_TIMEOUT_MS",
+        "DAILY_SIGNAL_DESKTOP",
+        "DAILY_SIGNAL_RESOURCES"
+      ]
+    }
+  }
+}

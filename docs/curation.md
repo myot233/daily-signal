@@ -32,7 +32,7 @@
 
 ## 验证
 
-`server/modules/ai/curation.test.ts` 使用确定性模型响应和隔离 SQLite，覆盖筛选、URL 去重、事件归组、配额、正负缓存、输入变更、坏 ID、坏引文、空结果、取消、截断、正文抽取和归档快照。它验证工程行为，不衡量真实模型质量。
+`packages/ai/src/curation.test.ts` 使用确定性模型响应和隔离 SQLite，覆盖筛选、URL 去重、事件归组、配额、正负缓存、输入变更、坏 ID、坏引文、空结果、取消、截断、正文抽取和归档快照。它验证工程行为，不衡量真实模型质量。
 
 Storybook 的 `Views/TemplateView` 覆盖标签添加、选择、保存、放弃、空标签拒绝和保存失败保留草稿；`Views/Report` 覆盖证据展开、来源链接、生成统计和空结果。
 
