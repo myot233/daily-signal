@@ -31,6 +31,7 @@ import {
   type Feed,
   type ImportResult,
 } from '@daily-signal/domain';
+import { FeedIcon, feedIconUrl } from './FeedIcon';
 
 const recommended = [
   {
@@ -189,7 +190,7 @@ export function FeedsView({
               <div
                 className={`grid place-items-center shrink-0 w-10.75 h-10.75 bg-[#f4ecdf] text-[#b07848] rounded-[9px] [&.has-error]:text-[#ad573c] [&.has-error]:bg-[#f8e9df] max-[800px]:w-8.5 max-[800px]:h-8.5 ${feed.error ? 'has-error' : ''}`}
               >
-                <Rss size={20} />
+                <FeedIcon src={feedIconUrl(feed)} />
               </div>
               <div className="min-w-0 flex-1 max-[640px]:basis-[calc(100%_-_50px)]">
                 <div className="flex items-center flex-wrap gap-2.5 [&_h2]:font-semibold [&_h2]:text-[14px] [&_h2]:wrap-anywhere [&_[data-slot=badge]]:whitespace-normal [&_[data-slot=badge]]:wrap-anywhere [&_[data-slot=badge]]:max-w-full max-[640px]:[&_h2]:text-[13px]">
