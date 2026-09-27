@@ -5,7 +5,10 @@ export function FeedRefreshProgress({ value }: { value: FeedRefreshStatus | null
   if (!value) return null;
   const running = value.status === 'running';
   return (
-    <section className="mb-3 rounded-md border bg-card px-3 py-2 text-xs" aria-label="订阅抓取进度">
+    <section
+      className="feed-refresh-progress mb-3 rounded-md border bg-card px-3 py-2 text-xs"
+      aria-label="订阅抓取进度"
+    >
       <div className="flex flex-wrap items-center gap-2" role="status">
         {running && <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />}
         <span>
