@@ -6,3 +6,4 @@ export type ModelDraft = Pick<Settings, 'baseUrl' | 'model' | 'deepseekThinking'
 export const apiKeyAtom = atom('');
 export const modelDraftAtom = atom<ModelDraft | null>(null);
 export const templateDraftAtom = atom<string | null>(null);
+export const curationDraftAtom = atom<Settings['curation'] | null>(null);

@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { ArticleAnalysis, DigestCuration } from '../../../shared/curation';
 import type {
   Article,
   DigestGenerationEventData,
@@ -62,7 +63,20 @@ export const digests = sqliteTable('digests', {
   providerProtocol: text('provider_protocol').$type<ProviderProtocol>(),
   providerModelId: text('provider_model_id'),
   providerOptions: text('provider_options', { mode: 'json' }).$type<ProviderOptions>(),
+  curation: text('curation', { mode: 'json' }).$type<DigestCuration>(),
 });
+export const articleAnalyses = sqliteTable(
+  'article_analyses',
+  {
+    key: text('key').primaryKey(),
+    articleId: text('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    analysis: text('analysis', { mode: 'json' }).$type<ArticleAnalysis>().notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [index('article_analyses_article').on(table.articleId)],
+);
 export const digestGenerationSessions = sqliteTable(
   'digest_generation_sessions',
   {

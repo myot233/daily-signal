@@ -256,18 +256,14 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
   return (
     <>
       <div className={ui.viewHeading}>
-        <div>
-          <div className={ui.eyebrow}>自带密钥 · 多连接</div>
-          <h1>模型与服务商</h1>
-          <p>管理真实连接、准确模型 ID 与下一次生成使用的默认项。</p>
-        </div>
-        <Button className="min-h-11" onClick={() => setAddOpen(true)}>
+        <h1>模型与服务商</h1>
+        <Button className="min-h-9" onClick={() => setAddOpen(true)}>
           <Plus />
           添加服务商
         </Button>
       </div>
 
-      <Card className="mb-6 flex-row items-center justify-between gap-5 p-5 shadow-none max-[700px]:items-start max-[700px]:flex-col">
+      <Card className="mb-4 flex-row items-center justify-between gap-3 px-4 py-3 shadow-none max-[700px]:items-start max-[700px]:flex-col">
         <div className="flex min-w-0 items-center gap-3.5">
           <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-secondary">
             {defaultChoice ? (
@@ -277,9 +273,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
             )}
           </span>
           <div className="min-w-0">
-            <p className="text-[10px] tracking-[.12em] text-muted-foreground">
-              日报默认模型 · 下次生成生效
-            </p>
+            <p className="text-[10px] tracking-[.12em] text-muted-foreground">默认模型</p>
             <strong className="mt-1 block truncate text-sm">
               {defaultChoice
                 ? defaultChoice.model.displayName || defaultChoice.model.modelId
@@ -314,7 +308,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
         </select>
       </Card>
 
-      <div className="grid grid-cols-[260px_minmax(0,1fr)] items-start gap-6 max-[900px]:grid-cols-1">
+      <div className="settings-workspace">
         <aside
           className={`rounded-xl border bg-card p-3 max-[900px]:p-2 ${providerId ? 'max-[900px]:hidden' : ''}`}
           aria-label="连接列表"
@@ -390,11 +384,11 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                 >
                   <ArrowLeft />
                 </Button>
-                <span className="grid size-12 shrink-0 place-items-center rounded-xl border bg-card">
+                <span className="grid size-9 shrink-0 place-items-center rounded-md border bg-card">
                   <ProviderIcon presetId={selected.presetId} size={28} />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="truncate font-serif text-[24px] font-semibold">{selected.name}</h2>
+                  <h2 className="truncate text-base font-semibold">{selected.name}</h2>
                   <p className="truncate font-mono text-[10px] text-muted-foreground">
                     {selected.baseUrl}
                   </p>
@@ -406,10 +400,10 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
             </div>
             <Tabs defaultValue="connection">
               <TabsList variant="line" className="mb-4 w-full justify-start border-b">
-                <TabsTrigger value="connection" className="min-h-11 flex-none px-4">
+                <TabsTrigger value="connection" className="min-h-9 flex-none px-4">
                   连接配置
                 </TabsTrigger>
-                <TabsTrigger value="models" className="min-h-11 flex-none px-4">
+                <TabsTrigger value="models" className="min-h-9 flex-none px-4">
                   可用模型 <span className="text-[10px]">{selected.models.length}</span>
                 </TabsTrigger>
               </TabsList>
@@ -418,10 +412,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                   <div className="flex items-start gap-3">
                     <Settings2 className="mt-0.5 text-primary" size={20} />
                     <div>
-                      <h3 className="font-serif text-xl font-semibold">基础连接</h3>
-                      <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-                        凭据只保存在服务器数据库，公共 API 仅返回是否已配置。
-                      </p>
+                      <h3 className="text-sm font-semibold">基础连接</h3>
                     </div>
                   </div>
                   <form
@@ -487,10 +478,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                         disabled={!!busy}
                         onChange={(event) => updateDraft({ baseUrl: event.target.value })}
                       />
-                      <p>
-                        填写公开 HTTPS API 根地址，不要包含 /responses、/chat/completions、/messages
-                        或 :generateContent。
-                      </p>
+                      <p>填写 API 根地址，如 https://api.openai.com/v1。</p>
                     </div>
                     <div className={fieldClass}>
                       <Label htmlFor="provider-key">API Key</Label>
@@ -512,7 +500,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                       />
                       <p>
                         <KeyRound className="mr-1 inline size-3.5" />
-                        输入新值会替换；修改地址或协议时必须重新输入，否则旧 Key 会被清除。
+                        留空保留；更换地址或协议后需重新输入。
                       </p>
                       {selected.hasCredential && draft.credential !== null && (
                         <Button
@@ -531,7 +519,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                         <p className="text-destructive">保存连接后才会清除 Key；放弃修改可撤销。</p>
                       )}
                     </div>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border bg-secondary/40 px-4 text-sm">
+                    <label className="flex min-h-9 cursor-pointer items-center gap-3 rounded-lg border bg-secondary/40 px-4 text-sm">
                       <input
                         type="checkbox"
                         checked={draft.enabled}
@@ -602,7 +590,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                                 ),
                               )}
                             </select>
-                            <p>候选与当前 SDK 对齐，是否支持由实际模型决定。</p>
+                            <p>按模型支持情况选择。</p>
                           </div>
                         )}
                         {selected.presetId === 'deepseek' && (
@@ -675,14 +663,14 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                       </div>
                     </details>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button type="submit" className="min-h-11" disabled={!!busy || !dirty}>
+                      <Button type="submit" className="min-h-9" disabled={!!busy || !dirty}>
                         <Save />
                         保存连接
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
-                        className="min-h-11"
+                        className="min-h-9"
                         disabled={!!busy || !dirty}
                         onClick={() => setDraftState(null)}
                       >
@@ -691,7 +679,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                       <Button
                         type="button"
                         variant="ghost"
-                        className="ml-auto min-h-11 text-destructive"
+                        className="ml-auto min-h-9 text-destructive"
                         disabled={!!busy}
                         onClick={() => setDeleteOpen(true)}
                       >
@@ -707,14 +695,14 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                 <Card className="gap-6 p-6 shadow-none max-[640px]:p-4.5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-serif text-xl font-semibold">这条连接的模型</h3>
+                      <h3 className="text-sm font-semibold">这条连接的模型</h3>
                       <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-                        目录失败不会清空已保存模型；准确 ID 始终可以手动输入。
+                        可获取模型列表，或手动添加。
                       </p>
                     </div>
                     <Button
                       variant="outline"
-                      className="min-h-11"
+                      className="min-h-9"
                       disabled={!!busy || !selected.hasCredential}
                       onClick={discover}
                     >
@@ -781,7 +769,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                         {discoveries.map((model) => (
                           <div
                             key={model.modelId}
-                            className="flex min-h-11 items-center gap-3 rounded-md bg-card px-3 py-2"
+                            className="flex min-h-9 items-center gap-3 rounded-md bg-card px-3 py-2"
                           >
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-xs">
@@ -845,7 +833,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                                   : model.source === 'migration'
                                     ? '旧配置迁移'
                                     : '手动添加'}{' '}
-                                · {model.enabled ? '已启用' : '已停用'} · 能力未知时不自动启用参数
+                                · {model.enabled ? '已启用' : '已停用'}
                               </span>
                             </span>
                             {isDefault && (
@@ -934,7 +922,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
             className={`items-center p-10 text-center shadow-none ${!providerId ? 'max-[900px]:hidden' : ''}`}
           >
             <ShieldCheck size={28} className="text-primary" />
-            <h2 className="font-serif text-2xl">{providerId ? '连接不存在' : '先添加一条连接'}</h2>
+            <h2 className="font-sans text-lg">{providerId ? '连接不存在' : '先添加一条连接'}</h2>
             <p className="text-sm text-muted-foreground">
               {providerId
                 ? '这条连接可能已删除，请返回列表重新选择。'
@@ -942,7 +930,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
             </p>
             {providerId ? (
               <Button
-                className="min-h-11"
+                className="min-h-9"
                 variant="outline"
                 onClick={() => void navigate('/settings')}
               >
@@ -950,7 +938,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                 返回连接列表
               </Button>
             ) : (
-              <Button className="min-h-11" onClick={() => setAddOpen(true)}>
+              <Button className="min-h-9" onClick={() => setAddOpen(true)}>
                 <Plus />
                 添加服务商
               </Button>
@@ -1054,7 +1042,7 @@ function CheckStatus({ provider }: { provider: ProviderConnection }) {
   if (!latest.length)
     return (
       <div className="rounded-lg border border-dashed p-4 text-[11px] text-muted-foreground">
-        尚未测试。保存配置不依赖测试成功。
+        尚未测试连接
       </div>
     );
   const stale = latest.some((check) => check.configRevision !== provider.revision);
@@ -1151,10 +1139,8 @@ function AddProviderDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">添加服务商连接</DialogTitle>
-          <DialogDescription>
-            预设只填入非敏感默认值。自定义网关需要选择它实际暴露的协议。
-          </DialogDescription>
+          <DialogTitle className="font-sans text-lg">添加服务商连接</DialogTitle>
+          <DialogDescription>选择服务商，填写连接信息。</DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-5"
@@ -1169,7 +1155,7 @@ function AddProviderDialog({
                 key={item.id}
                 type="button"
                 onClick={() => choose(item.id)}
-                className={`grid min-h-20 place-items-center gap-1 rounded-lg border p-2 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${item.id === presetId ? 'border-primary bg-[#faf3e8]' : 'bg-card hover:bg-secondary'}`}
+                className={`grid min-h-14 place-items-center gap-1 rounded-lg border p-2 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${item.id === presetId ? 'border-primary bg-[#faf3e8]' : 'bg-card hover:bg-secondary'}`}
               >
                 <ProviderIcon presetId={item.id} size={24} />
                 <span>{item.name}</span>

@@ -54,7 +54,8 @@ export function FeedsView({
   perform,
   notify,
   refresh,
-}: ViewProps & { refresh: () => void }) {
+  refreshing = false,
+}: ViewProps & { refresh: () => void; refreshing?: boolean }) {
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
@@ -85,24 +86,20 @@ export function FeedsView({
       setImportResult(result);
       notify({
         kind: result.errors.length ? 'warning' : 'success',
-        message: `导入完成：新增 ${result.imported} 个，跳过 ${result.skipped} 个，失败 ${result.errors.length} 个。`,
+        message: `订阅已导入：新增 ${result.imported} 个，跳过 ${result.skipped} 个，失败 ${result.errors.length} 个。${result.imported ? '文章正在后台抓取。' : ''}`,
       });
     });
   }
   return (
     <>
       <div className={ui.viewHeading}>
-        <div>
-          <div className={ui.eyebrow}>我的信息来源</div>
-          <h1>好的日报，从好的来源开始。</h1>
-          <p>订阅你信任的声音，让每一次阅读都有所收获。</p>
-        </div>
+        <h1>订阅源</h1>
         <Button disabled={!!busy} onClick={() => setAdding(true)}>
           <Plus />
           添加订阅源
         </Button>
       </div>
-      <div className="flex items-center justify-between flex-wrap gap-3 mt-6.5 mx-0 mb-4.25 max-[640px]:mt-5.5 max-[640px]:[&_>_.button-row]:gap-0.5 max-[640px]:[&_button]:text-[11px]">
+      <div className="flex items-center justify-between flex-wrap gap-3 mt-0 mx-0 mb-3 max-[640px]:mt-5.5 max-[640px]:[&_>_.button-row]:gap-0.5 max-[640px]:[&_button]:text-[11px]">
         <span className="inline-flex gap-2.5 items-center text-[12px] font-semibold">
           我的订阅 <Badge variant="secondary">{state.feeds.length}</Badge>
         </span>
@@ -113,7 +110,7 @@ export function FeedsView({
             accept=".opml,.xml,text/xml,application/xml"
             className="sr-only"
             aria-label="导入 OPML 文件"
-            disabled={!!busy}
+            disabled={!!busy || refreshing}
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = '';
@@ -123,7 +120,7 @@ export function FeedsView({
           <Button
             variant="ghost"
             size="sm"
-            disabled={!!busy}
+            disabled={!!busy || refreshing}
             onClick={() => fileInput.current?.click()}
           >
             <Upload />
@@ -150,10 +147,10 @@ export function FeedsView({
           <Button
             variant="outline"
             size="sm"
-            disabled={!!busy || !state.feeds.length}
+            disabled={!!busy || refreshing || !state.feeds.length}
             onClick={refresh}
           >
-            <RefreshCw className={busy === '刷新订阅' ? 'animate-spin' : ''} />
+            <RefreshCw className={refreshing ? 'animate-spin' : ''} />
             刷新订阅
           </Button>
         </div>
@@ -178,7 +175,7 @@ export function FeedsView({
         </div>
       )}
       {state.feeds.length ? (
-        <div className="grid gap-3">
+        <div className="compact-table">
           {state.feeds.map((feed) => (
             <Card
               className="flex-row items-center gap-4.25 py-5 px-5.5 shadow-none max-[800px]:gap-3 max-[800px]:py-4.5 max-[800px]:px-4 max-[640px]:flex-wrap max-[640px]:gap-3 max-[640px]:py-4.25 max-[640px]:px-3.75 max-[640px]:[&_>_.feed-count]:ml-11.5 max-[640px]:[&_>_.feed-count]:flex-row max-[640px]:[&_>_.feed-count]:items-baseline max-[640px]:[&_>_.feed-count]:gap-1.5 max-[640px]:[&_>_button]:ml-auto"
@@ -215,7 +212,7 @@ export function FeedsView({
                   </p>
                 )}
               </div>
-              <div className="feed-count flex flex-col text-center text-[#8e8674] text-[9px] min-w-12.5 [&_strong]:text-[#625a49] [&_strong]:text-[24px] [&_strong]:font-editorial [&_strong]:font-normal [&_strong]:leading-normal max-[800px]:min-w-7.5 max-[640px]:[&_strong]:text-[20px]">
+              <div className="feed-count flex flex-col text-center text-[#8e8674] text-[9px] min-w-12.5 [&_strong]:text-[#625a49] [&_strong]:text-[17px] [&_strong]:font-sans [&_strong]:font-normal [&_strong]:leading-normal max-[800px]:min-w-7.5 max-[640px]:[&_strong]:text-[17px]">
                 <strong>{feed.articleCount}</strong>
                 <span>篇文章</span>
               </div>
@@ -234,30 +231,26 @@ export function FeedsView({
       ) : (
         <div className={ui.emptyState}>
           <Rss size={30} strokeWidth={1.3} />
-          <h3>把你关注的世界，订阅进来。</h3>
-          <p>
-            添加 RSS / Atom 链接，或从阅读器导入 OPML 文件。
-            <br />
-            下方也有几个值得一读的起点。
-          </p>
+          <h3>暂无订阅</h3>
+          <p>添加 RSS / Atom 地址，或导入 OPML。</p>
           <Button variant="outline" onClick={() => setAdding(true)} disabled={!!busy}>
             <Plus />
-            添加第一个订阅源
+            添加订阅源
           </Button>
         </div>
       )}
-      <section className="mt-10.5 [&_>_.quiet-note]:mt-3.75 [&_>_.quiet-note]:text-[10px] max-[640px]:mt-8">
-        <div className="flex items-center justify-between gap-3 mb-4.5 [&_h2]:font-serif [&_h2]:text-[22px] [&_h2]:font-semibold [&_>_span]:text-[10px] [&_>_span]:text-muted-foreground max-[640px]:[&_h2]:text-[21px] max-[640px]:[&_>_span]:text-[9px]">
-          <h2>从这些声音开始</h2>
-          <span>精选推荐 · 按需添加</span>
-        </div>
+      <details className="mt-5 [&_>_.quiet-note]:mt-3.75 [&_>_.quiet-note]:text-[10px] max-[640px]:mt-8">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 mb-3 [&_h2]:font-sans [&_h2]:text-[13px] [&_h2]:font-semibold [&_>_span]:text-[10px] [&_>_span]:text-muted-foreground max-[640px]:[&_h2]:text-[13px] max-[640px]:[&_>_span]:text-[9px]">
+          <h2>推荐订阅</h2>
+          <span>展开</span>
+        </summary>
         <div className="grid grid-cols-3 gap-4 max-[800px]:grid-cols-1 max-[640px]:gap-2.75">
           {recommended.map((feed) => {
             const subscribed = state.feeds.some((item) => item.url === feed.url);
             return (
               <Card
                 key={feed.url}
-                className="p-5.5 gap-2.25 shadow-none [&_.eyebrow]:text-[9px] [&_.eyebrow]:mb-0.75 [&_h3]:font-serif [&_h3]:text-[19px] [&_h3]:font-medium [&_p]:text-muted-foreground [&_p]:text-[11px] [&_p]:flex-1 [&_button]:self-start [&_button]:text-primary [&_button]:pl-0 [&_button]:mt-2 max-[1150px]:p-4.5 max-[1150px]:[&_h3]:text-[17px] max-[800px]:gap-1.75 max-[800px]:[&_button]:mt-0"
+                className="p-5.5 gap-2.25 shadow-none [&_.eyebrow]:text-[9px] [&_.eyebrow]:mb-0.75 [&_h3]:font-sans [&_h3]:text-[14px] [&_h3]:font-medium [&_p]:text-muted-foreground [&_p]:text-[11px] [&_p]:flex-1 [&_button]:self-start [&_button]:text-primary [&_button]:pl-0 [&_button]:mt-2 max-[1150px]:p-4.5 max-[1150px]:[&_h3]:text-[14px] max-[800px]:gap-1.75 max-[800px]:[&_button]:mt-0"
               >
                 <span className={ui.eyebrow}>{feed.category}</span>
                 <h3>{feed.title}</h3>
@@ -274,10 +267,7 @@ export function FeedsView({
             );
           })}
         </div>
-        <p className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-[#655747]">
-          推荐链接连接真实公开站点，不会自动添加。可用性取决于来源站点与网络。
-        </p>
-      </section>
+      </details>
       <Dialog
         open={adding}
         onOpenChange={(open) => {
@@ -286,10 +276,8 @@ export function FeedsView({
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>添加一个值得关注的来源</DialogTitle>
-            <DialogDescription>
-              支持公开的 RSS 与 Atom 订阅地址。添加时会验证来源并获取文章。
-            </DialogDescription>
+            <DialogTitle>添加订阅源</DialogTitle>
+            <DialogDescription>输入 RSS 或 Atom 地址，添加后获取文章。</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(event) => {

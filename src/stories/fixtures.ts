@@ -1,4 +1,5 @@
 import type { AppState } from '../../shared/types';
+import { curationSettingsSchema } from '../../shared/curation';
 
 export function createAppState(overrides: Partial<AppState> = {}): AppState {
   return {
@@ -15,6 +16,7 @@ export function createAppState(overrides: Partial<AppState> = {}): AppState {
       deepseekThinking: 'disabled',
       template: '# 我的日报\n\n关注工程实践。',
       autoDigest: { enabled: false, time: '20:00' },
+      curation: curationSettingsSchema.parse({}),
     },
     defaultTemplate: '# 默认日报\n\n## 今日重点\n\n保留原始来源。',
     ...overrides,

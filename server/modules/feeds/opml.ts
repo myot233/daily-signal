@@ -12,7 +12,7 @@ const opmlParser = new XMLParser({
 });
 type XmlNode = { [name: string]: XmlNode[] | Record<string, string> | string };
 
-export function parseOpml(xml: string): { url: string; category: string }[] {
+export function parseOpml(xml: string): { url: string; category: string; title: string }[] {
   if (Buffer.byteLength(xml, 'utf8') > 2 * 1024 * 1024)
     throw new HttpError(413, 'OPML 文件不能超过 2 MiB。');
   if (forbiddenXml.test(xml)) throw new HttpError(400, 'OPML 不允许包含 DTD 或自定义实体。');
@@ -28,7 +28,7 @@ export function parseOpml(xml: string): { url: string; category: string }[] {
   const body = bodies[0]?.body;
   if (bodies.length !== 1 || !Array.isArray(body))
     throw new HttpError(400, 'OPML 必须包含一个 body。');
-  const candidates: { url: string; category: string }[] = [];
+  const candidates: { url: string; category: string; title: string }[] = [];
   function walk(nodes: XmlNode[], path: string[], depth: number) {
     for (const node of nodes) {
       if ('#text' in node && !String(node['#text']).trim()) continue;
@@ -37,7 +37,11 @@ export function parseOpml(xml: string): { url: string; category: string }[] {
       const url = attributes?.['@_xmlUrl'];
       if (url !== undefined) {
         if (!url.trim()) throw new HttpError(400, 'OPML 订阅地址不能为空。');
-        candidates.push({ url, category: categoryValue(path.join(' / ')) });
+        candidates.push({
+          url,
+          category: categoryValue(path.join(' / ')),
+          title: (attributes?.['@_title'] || attributes?.['@_text'] || '').trim().slice(0, 500),
+        });
         if (candidates.length > 200) throw new HttpError(413, '一次最多导入 200 个订阅源。');
         if (node.outline.length) walk(node.outline, path, depth);
       } else {

@@ -105,6 +105,7 @@ pnpm check && pnpm build && pnpm build-storybook
 - `play` 从上下文取得 `userEvent`；查询优先使用 role 和可访问名称，交互及异步断言必须等待。使用 `findBy*` / `waitFor` 等待渲染或弹窗动画完成。
 - 新增或修改交互组件时，维护相应 story 和行为测试。根据实际行为选择默认、空、忙碌、错误、禁用等状态，不机械生成无意义的状态矩阵。
 - 渲染真实业务组件，复用 `createAppState` 等 fixtures；stories 不得访问真实后端或第三方服务。
+- `vitest.config.ts` 显式预构建 `@tanstack/react-query`，避免首次运行组件测试时依赖优化触发页面重载。
 - `.storybook/preview.tsx` 已加载应用样式并提供隔离的 Jotai Provider。沿用它，不使用跨 story 的共享可变 store，不用 story 专属 CSS 掩盖组件问题。
 - 涉及保存的 story 可以在父组件边界模拟内存持久化，但必须执行 action、更新保存状态并正确处理失败；不能简单返回成功而跳过动作。
 - 保持全局 `a11y.test: 'error'`。修复组件的语义、标签、焦点、键盘操作或对比度问题，不关闭规则来绕过失败。无障碍自动化通过不代表完整人工审计。
@@ -113,7 +114,7 @@ pnpm check && pnpm build && pnpm build-storybook
 
 ## UI 与代码风格
 
-- 优先复用 `src/components/ui/`、`src/lib/ui-styles.ts` 和现有主题变量；保持现有纸张色、编辑式排版与中文文案风格。
+- 优先复用 `src/components/ui/`、`src/lib/ui-styles.ts` 和现有主题变量；保持浅色中性背景、少量暖色强调和中文文案。应用界面采用紧凑工具栏、列表与分栏阅读布局；正文保留舒适的阅读字号，不添加宣传语或重复解释。
 - 使用语义化 HTML，保持标题层级连续，表单控件有可访问标签，纯图标按钮有名称；保留键盘导航与减少动画偏好。
 - 保持 TypeScript 严格类型；外部输入用 Zod schema 校验，不以 `any`、不安全断言或关闭 lint 绕过契约。
 - 全仓使用根目录 `.oxfmtrc.json` 中的 Oxfmt 规则；前端遵循相邻文件风格，不借功能改动大面积重排文件。
@@ -136,3 +137,25 @@ pnpm check && pnpm build && pnpm build-storybook
 - 不提交 `node_modules/`、`dist/`、`storybook-static/`、`coverage/`、`test-results/`、自动生成的失败截图、本地数据库、`.env` 或日志；数据库迁移文件不属于可忽略的构建产物。
 - 删除任务中创建的临时验证脚本，停止临时服务，保留有回归价值的测试。检查脚本、CI 或开发流程变更时同步维护此文档。
 - 最终说明修改范围、实际执行的命令及结果、仍存在的警告与未验证项。不得将本地通过称为远端 CI 已通过，也不得将 Storybook 交互测试称为已完成像素级视觉回归测试。
+
+## 精选日报
+
+- `shared/curation.ts` 定义兴趣标签、筛选设置、卡片和归档统计；`server/modules/ai/curation.ts` 负责筛选、事件归组、配额与证据校验。行为和评测边界见 `docs/curation.md`。
+- 分析缓存可保存已经验证的正向和负向结果，失败不能伪装为低分或不匹配。缓存键必须隔离模型、端点、参数、标签、提示版本和文章变化；禁止存放密钥。
+- 引用只能来自当前阶段实际提供的资料，须校验来源 ID 与原文摘录。全文抓取必须沿用公开网络访问边界；只显示纯文本，抓取失败回退到 RSS 并明确标注。
+- 精选模式和原模板模式都须保留回归覆盖；旧归档保持原样。确定性替身测试不等于真实模型质量 benchmark。
+
+## Tauri 桌面入口
+
+- `src-tauri/` 管理 Tauri 2 窗口、菜单栏、单实例与内置 Node.js 后端生命周期。`scripts/prepare-desktop.mjs` 打包独立运行环境、前端、后端、SQLite 原生模块与迁移文件；当前只支持本机架构的 macOS 构建。
+- `pnpm desktop:dev` 运行预构建的桌面版；`pnpm desktop:build` 生成 `.app` 与 `.dmg`；`pnpm desktop:prepare` 只准备桌面资源；`pnpm desktop:test` 对准备后的资源执行隔离烟雾测试。使用说明见 `docs/desktop.md`。
+- 桌面改动在完整 Web 门禁外，还须运行 `pnpm desktop:prepare && pnpm desktop:test`、`cargo fmt --manifest-path src-tauri/Cargo.toml --check`、`cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` 和 `pnpm desktop:build`，并实际验证应用启动、退出和受影响的原生交互。
+- 本机浏览器测试可通过 `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome pnpm check` 使用已安装的 Chrome；未设置时沿用 CI 的 Playwright Chromium，测试断言与无障碍规则不变。独立 Node.js 运行环境可用 `DAILY_SIGNAL_NODE_BINARY` 指定。
+- 桌面数据固定放在应用数据目录，测试使用临时 `DAILY_SIGNAL_DATA_DIR`。不能把开发数据库或密钥放进安装包，也不自动迁移现有数据。保留 HTTP 同源安全边界；桌面前端不授予通用 shell / 文件系统权限。
+- `.desktop/`、`src-tauri/target/`、`src-tauri/gen/`、`src-tauri/binaries/` 是生成产物，不提交；`Cargo.lock` 与图标属于可提交资源。
+
+## OPML 与后台抓取
+
+- OPML 导入先事务保存订阅元数据，再由 `server/modules/feeds/ingestion.ts` 启动后台抓取。`feeds.status` 提供轻量进度；完整应用状态最多每几秒刷新一次，避免大批文章反复传输。
+- 全局抓取并发为 8，同一主机最多 4；保留超时、公共地址与响应大小限制。失败订阅仍须可见，重试不能重复创建订阅；运行中任务互斥。
+- 测量结果与边界见 `docs/benchmarks/opml-import/README.md`。区分订阅列表保存时间与文章抓取完成时间，不能把立即返回的导入确认当作完整吞吐量。

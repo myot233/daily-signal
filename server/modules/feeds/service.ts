@@ -34,13 +34,46 @@ function normalizedUrl(value: string): string {
   }
 }
 
-async function concurrent<T>(items: T[], work: (item: T) => Promise<void>): Promise<void> {
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(4, items.length) }, async () => {
-      while (next < items.length) await work(items[next++]!);
-    }),
-  );
+async function concurrent<T extends { url: string }>(
+  items: T[],
+  work: (item: T) => Promise<void>,
+): Promise<void> {
+  const pending = items.map((item) => ({ item, host: new URL(item.url).hostname }));
+  const hosts = new Map<string, number>();
+  let active = 0;
+  await new Promise<void>((resolve, reject) => {
+    let failed = false;
+    let failure: unknown;
+    function pump() {
+      if (failed) {
+        if (!active) reject(failure);
+        return;
+      }
+      if (!pending.length && !active) return resolve();
+      while (active < 8) {
+        const index = pending.findIndex(({ host }) => (hosts.get(host) ?? 0) < 4);
+        if (index === -1) return;
+        const { item, host } = pending.splice(index, 1)[0]!;
+        active++;
+        hosts.set(host, (hosts.get(host) ?? 0) + 1);
+        void work(item).then(
+          () => {
+            active--;
+            hosts.set(host, hosts.get(host)! - 1);
+            pump();
+          },
+          (error: unknown) => {
+            failed = true;
+            failure = error;
+            active--;
+            hosts.set(host, hosts.get(host)! - 1);
+            pump();
+          },
+        );
+      }
+    }
+    pump();
+  });
 }
 
 function ingest(tx: Transaction, feedId: string, incoming: ParsedArticle[]): number {
@@ -120,9 +153,13 @@ export function createFeedService(
     }
   }
 
-  async function refreshFeeds(): Promise<RefreshResult> {
+  async function refreshFeeds(
+    selected: Feed[] = listFeeds(),
+    onProgress?: (completed: number, result: RefreshResult) => void,
+  ): Promise<RefreshResult> {
     const result: RefreshResult = { added: 0, errors: [] };
-    await concurrent(listFeeds(), async (feed) => {
+    let completed = 0;
+    await concurrent(selected, async (feed) => {
       try {
         const loaded = await load(feed.url);
         result.added += db.transaction((tx) => {
@@ -143,6 +180,8 @@ export function createFeedService(
         const message = sourceError(error).message;
         const updated = db.update(feeds).set({ error: message }).where(eq(feeds.id, feed.id)).run();
         if (updated.changes) result.errors.push({ url: feed.url, error: message });
+      } finally {
+        onProgress?.(++completed, result);
       }
     });
     return result;
@@ -151,8 +190,14 @@ export function createFeedService(
   async function importOpml(xml: string): Promise<ImportResult> {
     const candidates = parseOpml(xml);
     const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
-    const seen = new Set(listFeeds().map((feed) => feed.url));
-    const pending: { url: string; category: string }[] = [];
+    const seen = new Set(
+      db
+        .select({ url: feeds.url })
+        .from(feeds)
+        .all()
+        .map((feed) => feed.url),
+    );
+    const pending: { url: string; category: string; title: string }[] = [];
     for (const candidate of candidates) {
       let url: string;
       try {
@@ -168,13 +213,24 @@ export function createFeedService(
       seen.add(url);
       pending.push({ ...candidate, url });
     }
-    await concurrent(pending, async (candidate) => {
-      try {
-        await addFeed(candidate.url, candidate.category);
+    const createdAt = now().toISOString();
+    // Import is local and atomic; network acquisition is a separate background job.
+    // Keep unreachable subscriptions so they can be retried instead of silently lost.
+    db.transaction((tx) => {
+      for (const candidate of pending) {
+        tx.insert(feeds)
+          .values({
+            id: randomUUID(),
+            url: candidate.url,
+            title: candidate.title || new URL(candidate.url).hostname,
+            category: candidate.category,
+            siteUrl: '',
+            createdAt,
+            lastFetchedAt: null,
+            error: null,
+          })
+          .run();
         result.imported++;
-      } catch (error) {
-        if (error instanceof HttpError && error.status === 409) result.skipped++;
-        else result.errors.push({ url: candidate.url, error: sourceError(error).message });
       }
     });
     return result;

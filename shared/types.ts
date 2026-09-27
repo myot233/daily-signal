@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { curationSettingsSchema, digestCurationSchema } from './curation';
 import { providerConnectionSchema, providerOptionsSchema } from './providers/schemas';
 import { providerProtocolSchema } from './providers/schemas';
 
@@ -23,6 +24,19 @@ export const articleSchema = z.object({
   publishedAt: z.string(),
   dateEstimated: z.boolean(),
 });
+export const translationInputSchema = z
+  .object({
+    content: z.string().trim().min(1, '没有可翻译的正文。').max(6_000),
+    providerModelId: z.string().uuid(),
+  })
+  .strict();
+export const translationResultSchema = z.object({
+  text: z.string().trim().min(1).max(30_000),
+  model: z.string(),
+  providerName: z.string(),
+});
+export type TranslationInput = z.infer<typeof translationInputSchema>;
+export type TranslationResult = z.infer<typeof translationResultSchema>;
 export const modelConfigSchema = z.object({
   baseUrl: z
     .string()
@@ -70,6 +84,7 @@ export const settingsSchema = modelConfigSchema
   .extend({
     template: z.string().trim().min(1, '模板不能为空。').max(12_000),
     autoDigest: autoDigestSettingsSchema.default({ enabled: false, time: '20:00' }),
+    curation: curationSettingsSchema.default(() => curationSettingsSchema.parse({})),
   })
   .strict();
 // Omitted keeps the saved key; null explicitly removes it. Responses never contain it.
@@ -111,6 +126,7 @@ export const digestSchema = z.object({
   providerProtocol: providerProtocolSchema.nullable(),
   providerModelId: z.string().uuid().nullable(),
   providerOptions: providerOptionsSchema.nullable(),
+  curation: digestCurationSchema.nullable().optional(),
 });
 export const digestGenerationStatusSchema = z.enum(['running', 'completed', 'failed']);
 const digestGenerationEventMeta = {
@@ -133,6 +149,24 @@ export const digestGenerationEventSchema = z.discriminatedUnion('type', [
     total: z.number().int().positive(),
   }),
   z.object({ ...digestGenerationEventMeta, type: z.literal('synthesizing') }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('screening'),
+    current: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    cached: z.number().int().nonnegative(),
+  }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('clustering'),
+    candidateCount: z.number().int().nonnegative(),
+  }),
+  z.object({
+    ...digestGenerationEventMeta,
+    type: z.literal('enriching'),
+    current: z.number().int().positive(),
+    total: z.number().int().positive(),
+  }),
   z.object({ ...digestGenerationEventMeta, type: z.literal('archiving') }),
   z.object({
     ...digestGenerationEventMeta,
@@ -168,6 +202,18 @@ export const refreshResultSchema = z.object({
   added: z.number().int().nonnegative(),
   errors: z.array(sourceErrorSchema),
 });
+export const feedRefreshStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(['running', 'completed', 'failed']),
+  total: z.number().int().nonnegative(),
+  completed: z.number().int().nonnegative(),
+  added: z.number().int().nonnegative(),
+  errors: z.array(sourceErrorSchema),
+  startedAt: z.iso.datetime(),
+  finishedAt: z.iso.datetime().nullable(),
+  message: z.string().nullable(),
+});
+export type FeedRefreshStatus = z.infer<typeof feedRefreshStatusSchema>;
 export const importResultSchema = z.object({
   imported: z.number().int().nonnegative(),
   skipped: z.number().int().nonnegative(),

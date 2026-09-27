@@ -4,10 +4,13 @@ import {
   startDigestGeneration,
   subscribeDigestGeneration,
 } from '../modules/ai/generation-queue';
-import { testConnection } from '../modules/ai/service';
+import { testConnection, translateArticle } from '../modules/ai/service';
 import { rpc } from './procedure';
 
 export const aiProcedures = {
+  translate: rpc.ai.translate.handler(({ input, context }) =>
+    translateArticle(input, { signal: context.signal }),
+  ),
   test: rpc.ai.test.handler(async ({ input, context }) => {
     await testConnection(input, { signal: context.signal });
     return { ok: true };

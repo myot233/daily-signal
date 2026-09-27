@@ -1,0 +1,74 @@
+[
+  {
+    "label": "baseline-full-1",
+    "candidates": 93,
+    "importMs": 100767.728,
+    "elapsedMs": 100767.733125,
+    "imported": 82,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 4,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  },
+  {
+    "label": "baseline-full-2",
+    "candidates": 93,
+    "importMs": 100740.870792,
+    "elapsedMs": 100740.87766700001,
+    "imported": 82,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 4,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  },
+  {
+    "label": "baseline-full-3",
+    "candidates": 93,
+    "importMs": 100691.592792,
+    "elapsedMs": 100691.59895799999,
+    "imported": 82,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 4,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  },
+  {
+    "label": "final-1",
+    "candidates": 93,
+    "importMs": 5.163999999999987,
+    "elapsedMs": 59659.613416,
+    "imported": 93,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 8,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  },
+  {
+    "label": "final-2",
+    "candidates": 93,
+    "importMs": 45.937625000000025,
+    "elapsedMs": 59874.090417,
+    "imported": 93,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 8,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  },
+  {
+    "label": "final-3",
+    "candidates": 93,
+    "importMs": 5.21545900000001,
+    "elapsedMs": 57840.675709,
+    "imported": 93,
+    "refreshed": 82,
+    "failures": 11,
+    "articleCount": 6150,
+    "peak": 8,
+    "fingerprint": "7a3bd067564c98f9831adf6556a8ccd3280fd4ecc84a40c649fdf9f72d0343db"
+  }
+]

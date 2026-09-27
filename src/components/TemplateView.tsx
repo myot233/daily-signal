@@ -14,12 +14,14 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { RichMarkdown } from './Report';
+import { CurationSettings } from './CurationSettings';
 
 export function TemplateView({
   state,
   busy,
   perform,
   saveSettings,
+  notify,
 }: ViewProps & { saveSettings: (settings: SettingsUpdate) => Promise<Settings> }) {
   const [draft, setTemplate] = useAtom(templateDraftAtom);
   const template = draft ?? state.settings.template;
@@ -63,17 +65,25 @@ export function TemplateView({
   return (
     <>
       <div className={ui.viewHeading}>
-        <div>
-          <div className={ui.eyebrow}>你的视角 · 你的编排</div>
-          <h1>一份日报，也可以有你的风格。</h1>
-          <p>告诉 AI 你关心什么、如何组织。把阅读习惯，写进每一天。</p>
-        </div>
+        <h1>日报设置</h1>
         <Badge variant={dirty ? 'outline' : 'secondary'}>
           {dirty ? <FilePenLine size={12} /> : <Check size={12} />}
           {dirty ? '有未保存的修改' : '已保存'}
         </Badge>
       </div>
-      <Card className="p-6.25 gap-5 shadow-none max-[640px]:py-4.75 max-[640px]:px-4">
+      <CurationSettings
+        state={state}
+        busy={busy}
+        perform={perform}
+        saveSettings={saveSettings}
+        notify={notify}
+      />
+      {state.settings.curation.enabled && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          以下模板仅用于关闭精选模式后的全文日报。
+        </p>
+      )}
+      <Card className="p-4 gap-3 shadow-none max-[640px]:py-4.75 max-[640px]:px-4">
         <Tabs defaultValue="edit">
           <div className="flex items-center justify-between flex-wrap gap-3.75 mb-4 max-[640px]:gap-3 max-[640px]:[&_.quiet-note]:text-[10px]">
             <TabsList aria-label="模板视图">
@@ -118,8 +128,7 @@ export function TemplateView({
           id="template-help"
           className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-[#655747]"
         >
-          可以使用 Markdown
-          标题、列表与表格定义结构，也可以写自然语言要求。模型仍须遵守来源约束，不执行文章中的指令，不编造事实或引用。
+          支持 Markdown。保存后生效；刷新会丢弃未保存修改。
         </p>
         <div className="flex justify-between flex-wrap gap-3 pt-4.75 border-t border-t-border max-[640px]:justify-end max-[640px]:[&_.button-row]:mr-auto max-[640px]:[&_button]:text-[11px]">
           <div className="button-row flex items-center flex-wrap gap-1.75">
@@ -141,14 +150,14 @@ export function TemplateView({
           </Button>
         </div>
       </Card>
-      <Card className="mt-6 gap-5 p-6.25 shadow-none max-[640px]:py-4.75 max-[640px]:px-4">
+      <Card className="mt-4 gap-3 p-4 shadow-none max-[640px]:py-4.75 max-[640px]:px-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <Clock3 className="mt-0.5 text-primary" size={20} />
             <div>
-              <h2 className="font-serif text-xl font-semibold">自动生成日报</h2>
+              <h2 className="text-sm font-semibold">自动生成日报</h2>
               <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-                Daily Signal 运行时，每天按这台电脑的本地时间调用默认模型；当日已有归档时自动跳过。
+                应用运行时按本地时间生成，当天已有日报则跳过。
               </p>
             </div>
           </div>
@@ -211,26 +220,6 @@ export function TemplateView({
           </Button>
         </div>
       </Card>
-      <div className="mt-7.75 [&_h2]:font-serif [&_h2]:text-[24px] [&_h2]:font-medium [&_>_.quiet-note]:mt-5.5 max-[640px]:[&_h2]:text-[23px]">
-        <h2>好的模板，为事实留出空间。</h2>
-        <div className="grid grid-cols-3 gap-6.5 mt-5 [&_span]:text-[10px] [&_span]:text-[#806339] [&_p]:text-[11px] [&_p]:text-muted-foreground [&_p]:mt-2 max-[800px]:gap-4 max-[640px]:grid-cols-1 max-[640px]:gap-5">
-          <div>
-            <span>01 / 重点优先</span>
-            <p>说明你在意的技术领域与阅读目的，而不是要求每个分类都必须有内容。</p>
-          </div>
-          <div>
-            <span>02 / 清楚区分</span>
-            <p>让模型区分事实、影响分析与行动建议。原始来源应当始终可以追溯。</p>
-          </div>
-          <div>
-            <span>03 / 允许留白</span>
-            <p>信息不足时明确说明。没有值得关注的变化，比虚构一个重点更有价值。</p>
-          </div>
-        </div>
-        <p className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-[#655747]">
-          恢复默认仅修改草稿，点击保存才生效。切换页面保留草稿；整页刷新会丢弃未保存的修改。
-        </p>
-      </div>
     </>
   );
 }

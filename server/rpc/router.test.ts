@@ -199,3 +199,25 @@ test('provider RPC exposes catalog and connection state without credentials', as
   await rpc.defaultModel.set({ providerModelId: null });
   await rpc.providers.remove({ id: created.id, revision: created.revision });
 });
+
+test('translation RPC validates bounded text and requires a saved model credential', async () => {
+  const provider = await rpc.providers.create({
+    presetId: 'custom',
+    name: 'Translation without key',
+    protocol: 'openai-chat-completions',
+    baseUrl: 'https://translation.example.com/v1',
+    enabled: true,
+    initialModelId: 'test-model',
+  });
+  const providerModelId = provider.models[0]!.id;
+  for (const content of ['', 'x'.repeat(6001)]) {
+    const result = await fetch(`${baseUrl}/rpc/ai/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: { content, providerModelId } }),
+    });
+    assert.equal(result.status, 400);
+  }
+  await assert.rejects(rpc.ai.translate({ content: 'Hello', providerModelId }), /尚未保存 API Key/);
+  await rpc.providers.remove({ id: provider.id, revision: provider.revision });
+});
