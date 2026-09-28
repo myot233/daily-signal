@@ -18,9 +18,11 @@ import {
   addFeedSchema,
   importOpmlSchema,
   type Feed,
+  type FeedRefreshStatus,
   type ImportResult,
 } from '@daily-signal/domain';
 import { CachedFeedIcon } from './FeedIcon';
+import { FeedRefreshProgress } from './FeedRefreshProgress';
 import { ArticlesView } from './ArticlesView';
 
 export function FeedsView({
@@ -28,10 +30,16 @@ export function FeedsView({
   busy,
   perform,
   notify,
+  feedRefresh,
   refresh,
   refreshing = false,
   navigate,
-}: ViewProps & { refresh: () => void; refreshing?: boolean; navigate: (view: View) => void }) {
+}: ViewProps & {
+  feedRefresh?: FeedRefreshStatus | null;
+  refresh: () => void;
+  refreshing?: boolean;
+  navigate: (view: View) => void;
+}) {
   const [feedId, setFeedId] = useState('');
   const selectedFeedId = state.feeds.some((feed) => feed.id === feedId) ? feedId : '';
   const articlePane = useRef<HTMLDivElement>(null);
@@ -75,7 +83,10 @@ export function FeedsView({
   return (
     <section className="subscriptions-workspace">
       <div className={ui.viewHeading}>
-        <h1>订阅与文章</h1>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <h1>订阅与文章</h1>
+          <FeedRefreshProgress value={feedRefresh} />
+        </div>
         <Button disabled={!!busy} onClick={() => setAdding(true)}>
           <Plus />
           添加订阅源
