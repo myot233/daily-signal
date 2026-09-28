@@ -25,28 +25,38 @@ type Story = StoryObj<typeof meta>;
 export const Running: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('progressbar')).toHaveAttribute('value', '42');
-    await expect(canvas.getByRole('status')).toHaveTextContent('42 / 93');
-    await expect(canvas.getByRole('status')).toHaveTextContent('后台抓取文章');
+    await expect(canvas.getByRole('status')).toHaveTextContent('抓取中 42/93');
+    await expect(canvas.queryByRole('progressbar')).not.toBeInTheDocument();
   },
 };
 
-export const CompletedWithFailures: Story = {
+export const Completed: Story = {
   args: {
     value: {
       ...meta.args.value,
       status: 'completed',
       completed: 93,
       finishedAt: '2026-09-27T00:00:50Z',
-      errors: [{ url: 'https://example.com/feed', error: '订阅服务器返回 HTTP 503，请稍后重试。' }],
     },
   },
-  play: async ({ canvasElement, userEvent }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole('progressbar')).not.toBeInTheDocument();
-    await expect(canvas.getByRole('status')).toHaveTextContent('抓取完成');
-    await expect(canvas.getByText(/订阅服务器返回 HTTP 503/)).not.toBeVisible();
-    await userEvent.click(canvas.getByText('失败详情（1）'));
-    await expect(canvas.getByText(/订阅服务器返回 HTTP 503/)).toBeVisible();
+    await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+  },
+};
+
+export const Interrupted: Story = {
+  args: {
+    value: {
+      ...meta.args.value,
+      status: 'failed',
+      finishedAt: '2026-09-27T00:00:50Z',
+      message: '后台抓取中断，已保存的订阅和文章仍保留，可重新刷新。',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('alert')).toHaveTextContent('抓取中断，请重试');
   },
 };

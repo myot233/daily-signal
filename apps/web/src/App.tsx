@@ -19,7 +19,6 @@ import {
 import { Button } from '@daily-signal/ui/button';
 import { TodayView } from './components/TodayView';
 import { FeedsView } from './components/FeedsView';
-import { FeedRefreshProgress } from './components/FeedRefreshProgress';
 import { ArchiveView } from './components/ArchiveView';
 import { TemplateView } from './components/TemplateView';
 import { SettingsView } from './components/SettingsView';
@@ -274,7 +273,6 @@ export default function App() {
   function refresh() {
     void perform('刷新订阅', async () => {
       await rpc.feeds.refresh();
-      setNotice({ kind: 'success', message: '已开始后台抓取文章，可以继续阅读。' });
     });
   }
   const loading = stateQuery.isFetching;
@@ -390,7 +388,6 @@ export default function App() {
             <span>正在{busy}…</span>
           </div>
         )}
-        <FeedRefreshProgress value={feedRefresh} />
         {feedRefreshQuery.isError && (
           <div className="app-notice warning" role="status">
             <p>暂时无法读取抓取进度，后台任务可能仍在继续。</p>
@@ -435,6 +432,7 @@ export default function App() {
                 props && (
                   <FeedsView
                     {...props}
+                    feedRefresh={feedRefresh}
                     refreshing={feedRefreshRunning}
                     refresh={refresh}
                     navigate={navigate}

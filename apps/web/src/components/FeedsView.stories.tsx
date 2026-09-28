@@ -62,6 +62,29 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Refreshing: Story = {
+  args: {
+    feedRefresh: {
+      id: '00000000-0000-4000-8000-000000000001',
+      status: 'running',
+      total: 93,
+      completed: 42,
+      added: 1860,
+      errors: [],
+      startedAt: date,
+      finishedAt: null,
+      message: null,
+    },
+    refreshing: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = canvas.getByRole('status');
+    await expect(status).toHaveTextContent('抓取中 42/93');
+    await expect(status.closest('.view-heading')).not.toBeNull();
+  },
+};
+
 export const SelectAndRead: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement);
