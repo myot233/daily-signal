@@ -1,6 +1,6 @@
 import { ui } from '@daily-signal/ui/styles';
 import { useEffect, useRef, useState } from 'react';
-import { Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
+import { Download, LoaderCircle, Plus, RefreshCw, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@daily-signal/ui/button';
 import { Input } from '@daily-signal/ui/input';
 import { Label } from '@daily-signal/ui/label';
@@ -15,6 +15,8 @@ import {
 import { rpc, download, type View, type ViewProps } from '@daily-signal/client';
 import {
   addFeedSchema,
+  feedUpdateSchema,
+  type FeedUpdate,
   importOpmlSchema,
   type Feed,
   type FeedRefreshStatus,
@@ -22,7 +24,7 @@ import {
 } from '@daily-signal/domain';
 import { CachedFeedIcon } from './FeedIcon';
 import { FeedRefreshProgress } from './FeedRefreshProgress';
-import { ArticlesView } from './ArticlesView';
+import { ArticlesView, type ArticleActions } from './ArticlesView';
 
 export function FeedsView({
   state,
@@ -33,11 +35,15 @@ export function FeedsView({
   refresh,
   refreshing = false,
   navigate,
+  articleActions,
+  saveFeed = (input: FeedUpdate) => rpc.feeds.update(input),
 }: ViewProps & {
   feedRefresh?: FeedRefreshStatus | null;
   refresh: () => void;
   refreshing?: boolean;
   navigate: (view: View) => void;
+  articleActions?: ArticleActions;
+  saveFeed?: (input: FeedUpdate) => Promise<Feed>;
 }) {
   const [feedId, setFeedId] = useState('');
   const selectedFeedId = state.feeds.some((feed) => feed.id === feedId) ? feedId : '';
@@ -48,6 +54,12 @@ export function FeedsView({
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
+  const [editing, setEditing] = useState<Feed | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const groups = [...new Set(state.feeds.map((feed) => feed.category))].sort((a, b) =>
+    a.localeCompare(b, 'zh-CN'),
+  );
   const [deleting, setDeleting] = useState<Feed | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -182,38 +194,73 @@ export function FeedsView({
               onClick={() => setFeedId('')}
             >
               <span className="subscription-source-name">全部文章</span>
-              <span className="subscription-count">{state.articles.length}</span>
+              <span className="subscription-count">
+                {state.feeds.reduce(
+                  (sum, feed) =>
+                    sum +
+                    (feed.unreadCount ??
+                      state.articles.filter(
+                        (article) => article.feedId === feed.id && !article.readAt,
+                      ).length),
+                  0,
+                )}{' '}
+                未读
+              </span>
             </button>
-            {state.feeds.map((feed) => (
-              <div className="subscription-source-row" key={feed.id}>
-                <button
-                  type="button"
-                  className="subscription-source"
-                  aria-label={feed.title}
-                  aria-pressed={selectedFeedId === feed.id}
-                  title={feed.title}
-                  onClick={() => setFeedId(feed.id)}
-                >
-                  <CachedFeedIcon feed={feed} />
-                  <span className="subscription-source-label">
-                    <span className="subscription-source-name">{feed.title}</span>
-                    {(feed.error || feed.category) && (
-                      <span className="subscription-source-category">
-                        {feed.error ? '刷新失败' : feed.category}
-                      </span>
-                    )}
-                  </span>
-                  <span className="subscription-count">{feed.articleCount}</span>
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`删除 ${feed.title}`}
-                  disabled={!!busy}
-                  onClick={() => setDeleting(feed)}
-                >
-                  <Trash2 size={14} />
-                </Button>
+            {groups.map((group) => (
+              <div key={group}>
+                {group && <h3 className="subscription-group">{group}</h3>}
+                {state.feeds
+                  .filter((feed) => feed.category === group)
+                  .map((feed) => (
+                    <div className="subscription-source-row" key={feed.id}>
+                      <button
+                        type="button"
+                        className="subscription-source"
+                        aria-label={feed.title}
+                        aria-pressed={selectedFeedId === feed.id}
+                        title={feed.title}
+                        onClick={() => setFeedId(feed.id)}
+                      >
+                        <CachedFeedIcon feed={feed} />
+                        <span className="subscription-source-label">
+                          <span className="subscription-source-name">{feed.title}</span>
+                          {feed.error && (
+                            <span className="subscription-source-category">刷新失败</span>
+                          )}
+                        </span>
+                        <span className="subscription-count" title={`${feed.articleCount} 篇文章`}>
+                          {feed.unreadCount ??
+                            state.articles.filter(
+                              (article) => article.feedId === feed.id && !article.readAt,
+                            ).length}{' '}
+                          未读
+                        </span>
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`编辑 ${feed.title}`}
+                        disabled={!!busy}
+                        onClick={() => {
+                          setEditing(feed);
+                          setEditTitle(feed.title);
+                          setEditCategory(feed.category);
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`删除 ${feed.title}`}
+                        disabled={!!busy}
+                        onClick={() => setDeleting(feed)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ))}
               </div>
             ))}
           </div>
@@ -228,6 +275,7 @@ export function FeedsView({
             perform={perform}
             notify={notify}
             navigate={navigate}
+            actions={articleActions}
             sourceFilter={{ id: selectedFeedId, onChange: setFeedId }}
             onAddFeed={() => setAdding(true)}
           />
@@ -288,6 +336,85 @@ export function FeedsView({
               </Button>
               <Button type="submit" disabled={!!busy || !url.trim()}>
                 {busy ? <LoaderCircle className="animate-spin" /> : <Plus />}添加订阅
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!editing}
+        onOpenChange={(open) => {
+          if (!open && !busy) setEditing(null);
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>编辑订阅源</DialogTitle>
+            <DialogDescription>自定义名称和分组，刷新后保留。</DialogDescription>
+          </DialogHeader>
+          <form
+            className="flex flex-col gap-5.5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!editing) return;
+              void (async () => {
+                if (
+                  await perform(
+                    '保存订阅源',
+                    async () => {
+                      await saveFeed(
+                        feedUpdateSchema.parse({
+                          id: editing.id,
+                          title: editTitle,
+                          category: editCategory,
+                        }),
+                      );
+                    },
+                    '订阅源已更新。',
+                  )
+                )
+                  setEditing(null);
+              })();
+            }}
+          >
+            <div className={ui.field}>
+              <Label htmlFor="edit-feed-title">订阅名称</Label>
+              <Input
+                id="edit-feed-title"
+                required
+                maxLength={500}
+                value={editTitle}
+                disabled={!!busy}
+                onChange={(event) => setEditTitle(event.target.value)}
+              />
+            </div>
+            <div className={ui.field}>
+              <Label htmlFor="edit-feed-category">分组</Label>
+              <Input
+                id="edit-feed-category"
+                maxLength={200}
+                value={editCategory}
+                disabled={!!busy}
+                onChange={(event) => setEditCategory(event.target.value)}
+                list="feed-categories"
+              />
+              <datalist id="feed-categories">
+                {groups.filter(Boolean).map((group) => (
+                  <option key={group} value={group} />
+                ))}
+              </datalist>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!!busy}
+                onClick={() => setEditing(null)}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={!!busy || !editTitle.trim()}>
+                保存订阅
               </Button>
             </DialogFooter>
           </form>

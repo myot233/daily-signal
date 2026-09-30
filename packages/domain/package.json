@@ -10,7 +10,8 @@
     "./errors": "./src/errors.ts",
     "./providers/catalog": "./src/providers/catalog.ts",
     "./providers/draft-state": "./src/providers/draft-state.ts",
-    "./providers/schemas": "./src/providers/schemas.ts"
+    "./providers/schemas": "./src/providers/schemas.ts",
+    "./reader": "./src/reader.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

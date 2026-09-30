@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, X } from 'lucide-react';
-import type { Article } from '@daily-signal/domain';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Mail, MailOpen, Star, X } from 'lucide-react';
+import type { Article, ArticleUpdate } from '@daily-signal/domain';
 import { formatDate, safeUrl } from '@daily-signal/client';
 import { ArticleTranslation } from './ArticleTranslation';
 import type { TranslateArticle, TranslationModel } from './ArticleTranslation';
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@daily-si
 
 type ArticlePreviewProps = {
   inline?: boolean;
+  busy?: boolean;
+  onUpdate?: (change: Omit<ArticleUpdate, 'id'>) => void;
   articles: readonly Article[];
   index: number;
   open: boolean;
@@ -22,6 +24,8 @@ type ArticlePreviewProps = {
 
 export function ArticlePreview({
   inline = false,
+  busy = false,
+  onUpdate,
   articles,
   index,
   open,
@@ -44,6 +48,31 @@ export function ArticlePreview({
   }, [article?.id, open, inline]);
 
   if (!article) return null;
+
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.defaultPrevented ||
+      (event.target instanceof HTMLElement &&
+        event.target.closest('input, textarea, select, [contenteditable="true"]'))
+    )
+      return;
+    const key = event.key.toLowerCase();
+    if (key === 'j' && index < articles.length - 1) {
+      event.preventDefault();
+      onIndexChange(index + 1);
+    }
+    if (key === 'k' && index > 0) {
+      event.preventDefault();
+      onIndexChange(index - 1);
+    }
+    if (onUpdate && !busy && (key === 'm' || key === 's')) {
+      event.preventDefault();
+      onUpdate(key === 'm' ? { read: !article.readAt } : { starred: !article.starred });
+    }
+  }
 
   const Title = inline ? 'h2' : DialogTitle;
   const Description = inline ? 'p' : DialogDescription;
@@ -86,6 +115,32 @@ export function ArticlePreview({
           <p className="mt-2 text-xs text-muted-foreground">
             来源未提供有效发布时间，使用首次发现时间，不代表当日发布。
           </p>
+        )}
+        {onUpdate && (
+          <div className="article-row-actions mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              aria-keyshortcuts="M"
+              onClick={() => onUpdate({ read: !article.readAt })}
+            >
+              {article.readAt ? <Mail /> : <MailOpen />}
+              {article.readAt ? '标为未读' : '标为已读'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              aria-pressed={!!article.starred}
+              aria-keyshortcuts="S"
+              onClick={() => onUpdate({ starred: !article.starred })}
+            >
+              <Star className={article.starred ? 'fill-current text-primary' : ''} />
+              {article.starred ? '取消收藏' : '收藏文章'}
+            </Button>
+            <span className="text-xs text-muted-foreground">J/K 切换 · M 已读 · S 收藏</span>
+          </div>
         )}
         {article.content.trim() ? (
           open && (
@@ -143,7 +198,7 @@ export function ArticlePreview({
   );
   if (inline)
     return open ? (
-      <section className="reader-detail" aria-label="文章预览">
+      <section className="reader-detail" aria-label="文章预览" onKeyDown={handleKeyDown}>
         {content}
       </section>
     ) : null;
@@ -151,6 +206,7 @@ export function ArticlePreview({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         variant="drawer"
+        onKeyDown={handleKeyDown}
         showCloseButton={false}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
