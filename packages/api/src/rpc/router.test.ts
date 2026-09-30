@@ -336,3 +336,56 @@ test('translation RPC validates bounded text and requires a saved model credenti
   await assert.rejects(rpc.ai.translate({ content: 'Hello', providerModelId }), /尚未保存 API Key/);
   await rpc.providers.remove({ id: provider.id, revision: provider.revision });
 });
+
+test('reader RPC validates changes, persists flags and applies only the filtered batch', async () => {
+  const { db } = await import('@daily-signal/database');
+  const { feeds, articles } = await import('@daily-signal/database/schema');
+  db.insert(feeds)
+    .values({
+      id: 'reader-feed',
+      title: 'Original',
+      url: 'https://reader.example.com/rss',
+      category: '工程',
+      createdAt: '2026-09-30T00:00:00.000Z',
+    })
+    .run();
+  for (const id of ['reader-one', 'reader-two'])
+    db.insert(articles)
+      .values({
+        id,
+        feedId: 'reader-feed',
+        title: id,
+        url: `https://reader.example.com/${id}`,
+        content: '正文',
+        publishedAt: '2026-09-30T00:00:00.000Z',
+      })
+      .run();
+  try {
+    await assert.rejects(rpc.articles.update({ id: 'reader-one' }), { code: 'BAD_REQUEST' });
+    await assert.rejects(rpc.articles.update({ id: 'missing-reader', read: true }), {
+      code: 'NOT_FOUND',
+    });
+    await assert.rejects(rpc.feeds.update({ id: 'reader-feed', title: '  ', category: '' }), {
+      code: 'BAD_REQUEST',
+    });
+    const feed = await rpc.feeds.update({ id: 'reader-feed', title: '我的订阅', category: '技术' });
+    assert.equal(feed.title, '我的订阅');
+    assert.equal(feed.unreadCount, 2);
+    const marked = await rpc.articles.update({ id: 'reader-one', starred: true });
+    assert.equal(marked.starred, true);
+    assert.equal(marked.readAt, null);
+    assert.deepEqual(
+      await rpc.articles.markRead({
+        filter: { feedId: 'reader-feed', query: '', status: 'unread', starredOnly: true },
+        read: true,
+      }),
+      { updated: 1 },
+    );
+    const state = await rpc.state();
+    assert.ok(state.articles.find((article) => article.id === 'reader-one')!.readAt);
+    assert.equal(state.articles.find((article) => article.id === 'reader-two')!.readAt, null);
+    assert.equal(state.feeds.find((item) => item.id === feed.id)!.unreadCount, 1);
+  } finally {
+    db.delete(feeds).where(eq(feeds.id, 'reader-feed')).run();
+  }
+});

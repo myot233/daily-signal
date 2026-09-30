@@ -17,6 +17,7 @@ export const feeds = sqliteTable('feeds', {
   id: text('id').primaryKey(),
   url: text('url').notNull().unique(),
   title: text('title').notNull(),
+  customTitle: text('custom_title'),
   category: text('category').notNull().default(''),
   siteUrl: text('site_url').notNull().default(''),
   createdAt: text('created_at').notNull(),
@@ -40,6 +41,8 @@ export const articles = sqliteTable(
     content: text('content').notNull(),
     publishedAt: text('published_at').notNull(),
     dateEstimated: integer('date_estimated', { mode: 'boolean' }).notNull().default(false),
+    readAt: text('read_at'),
+    starred: integer('starred', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => [
     uniqueIndex('articles_feed_url').on(table.feedId, table.url),
