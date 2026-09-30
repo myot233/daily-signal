@@ -10,6 +10,7 @@ import { FeedsView } from './components/FeedsView';
 import { ArchiveView } from './components/ArchiveView';
 import { TemplateView } from './components/TemplateView';
 import { SettingsView } from './components/SettingsView';
+import { GeneralSettingsView } from './components/GeneralSettingsView';
 import { errorMessage, rpc } from '@daily-signal/client';
 import type {
   DigestGenerationState,
@@ -18,7 +19,7 @@ import type {
   StartDigestGeneration,
   View,
 } from '@daily-signal/client';
-import type { AppState, SettingsUpdate } from '@daily-signal/domain';
+import type { AppState, AutomationSettings, SettingsUpdate } from '@daily-signal/domain';
 import { appStateQueryOptions, feedRefreshQueryOptions } from '@daily-signal/client/query';
 
 const navigation = [
@@ -26,7 +27,7 @@ const navigation = [
   { id: 'feeds', path: '/feeds', label: '订阅与文章' },
   { id: 'archive', path: '/archive', label: '日报归档' },
   { id: 'template', path: '/template', label: '日报设置' },
-  { id: 'settings', path: '/settings', label: '模型与服务商' },
+  { id: 'settings', path: '/settings', label: '设置' },
 ] satisfies { id: View; path: string; label: string }[];
 
 // These transient atoms coordinate events without putting request closures or
@@ -69,7 +70,15 @@ function useActionMutation() {
 export default function App() {
   const queryClient = useQueryClient();
   const stateQuery = useQuery(appStateQueryOptions);
-  const feedRefreshQuery = useQuery(feedRefreshQueryOptions);
+  const feedRefreshQuery = useQuery({
+    ...feedRefreshQueryOptions,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'running'
+        ? 1_000
+        : stateQuery.data?.settings.feedRefresh.intervalMinutes
+          ? 10_000
+          : false,
+  });
   const feedRefresh = feedRefreshQuery.data;
   const feedRefreshRunning = feedRefresh?.status === 'running';
   const lastFeedUpdate = useRef({ id: '', completed: 0, time: 0, finished: false });
@@ -255,8 +264,28 @@ export default function App() {
     [queryClient],
   );
 
+  const saveAutomation = useCallback(
+    async (settings: AutomationSettings) => {
+      const saved = await rpc.settings.saveAutomation(settings);
+      await queryClient.cancelQueries({ queryKey: appStateQueryOptions.queryKey, exact: true });
+      queryClient.setQueryData<AppState>(appStateQueryOptions.queryKey, (current) =>
+        current ? { ...current, settings: saved } : current,
+      );
+      return saved;
+    },
+    [queryClient],
+  );
+
   function navigate(next: View) {
-    void routeNavigate(next === 'today' ? '/' : next === 'articles' ? '/feeds' : `/${next}`);
+    void routeNavigate(
+      next === 'today'
+        ? '/'
+        : next === 'articles'
+          ? '/feeds'
+          : next === 'settings'
+            ? '/settings/providers'
+            : `/${next}`,
+    );
   }
   function refresh() {
     void perform('刷新订阅', async () => {
@@ -415,7 +444,11 @@ export default function App() {
               path="/template"
               element={props && <TemplateView {...props} saveSettings={saveSettings} />}
             />
-            <Route path="/settings" element={props && <SettingsView {...props} />} />
+            <Route
+              path="/settings"
+              element={props && <GeneralSettingsView {...props} saveAutomation={saveAutomation} />}
+            />
+            <Route path="/settings/providers" element={props && <SettingsView {...props} />} />
             <Route
               path="/settings/providers/:providerId"
               element={props && <SettingsView {...props} />}

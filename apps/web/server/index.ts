@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { config } from '@daily-signal/config';
 import { createApp } from '@daily-signal/api';
+import { feedRefreshScheduler } from '@daily-signal/api/feed-refresh-scheduler';
 import { mountFrontend } from './frontend';
 import { sqlite } from '@daily-signal/database';
 import {
@@ -16,6 +17,7 @@ const desktop = config.desktop.enabled;
 const port = config.server.port;
 initializeDigestGenerationQueue();
 initializeDailyDigestScheduler();
+feedRefreshScheduler.initialize();
 const app = createApp();
 const server = createServer(app);
 const closeFrontend = await mountFrontend(app, server);
@@ -42,6 +44,7 @@ async function shutdown() {
   deadline.unref();
   await closeFrontend?.();
   stopDailyDigestScheduler();
+  feedRefreshScheduler.stop();
   await stopDigestGenerationQueue();
   server.close(() => {
     sqlite.close();

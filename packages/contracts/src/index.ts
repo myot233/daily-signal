@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   addFeedSchema,
   appStateSchema,
+  automationSettingsSchema,
   connectionSchema,
   digestGenerationEventSchema,
   digestGenerationStartSchema,
@@ -55,7 +56,10 @@ export const contract = {
     import: procedure.input(importOpmlSchema).output(importResultSchema),
     export: procedure.output(z.object({ opml: z.string() })),
   },
-  settings: { save: procedure.input(settingsUpdateSchema).output(settingsSchema) },
+  settings: {
+    save: procedure.input(settingsUpdateSchema).output(settingsSchema),
+    saveAutomation: procedure.input(automationSettingsSchema).output(settingsSchema),
+  },
   providers: {
     list: procedure.output(providerListSchema),
     create: procedure.input(providerCreateSchema).output(providerConnectionSchema),

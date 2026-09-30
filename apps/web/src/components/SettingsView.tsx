@@ -29,6 +29,7 @@ import type { ViewProps } from '@daily-signal/client';
 import { rpc } from '@daily-signal/client';
 import { ui } from '@daily-signal/ui/styles';
 import { ProviderIcon } from './ProviderIcon';
+import { SettingsNavigation } from './SettingsNavigation';
 import { Badge } from '@daily-signal/ui/badge';
 import { Button } from '@daily-signal/ui/button';
 import { Card } from '@daily-signal/ui/card';
@@ -262,6 +263,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
           添加服务商
         </Button>
       </div>
+      <SettingsNavigation />
 
       <Card className="mb-4 flex-row items-center justify-between gap-3 px-4 py-3 shadow-none max-[700px]:items-start max-[700px]:flex-col">
         <div className="flex min-w-0 items-center gap-3.5">
@@ -380,7 +382,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                   variant="ghost"
                   size="icon"
                   aria-label="返回连接列表"
-                  onClick={() => void navigate('/settings')}
+                  onClick={() => void navigate('/settings/providers')}
                 >
                   <ArrowLeft />
                 </Button>
@@ -933,7 +935,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
               <Button
                 className="min-h-9"
                 variant="outline"
-                onClick={() => void navigate('/settings')}
+                onClick={() => void navigate('/settings/providers')}
               >
                 <ArrowLeft />
                 返回连接列表
@@ -977,7 +979,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                   async () => {
                     await rpc.providers.remove({ id: selected.id, revision: selected.revision });
                     setDeleteOpen(false);
-                    void navigate('/settings');
+                    void navigate('/settings/providers');
                   },
                   '连接已删除。',
                 );
