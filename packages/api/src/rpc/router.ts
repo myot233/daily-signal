@@ -1,4 +1,4 @@
-import { saveSettings } from '../settings';
+import { saveAutomationSettings, saveSettings } from '../settings';
 import { getState } from '../state';
 import { aiProcedures, digestProcedures } from './ai';
 import { articleProcedures, feedProcedures } from './feeds';
@@ -11,6 +11,9 @@ export const router = implementer.router({
   articles: articleProcedures,
   settings: {
     save: rpc.settings.save.handler(({ input }) => saveSettings(input)),
+    saveAutomation: rpc.settings.saveAutomation.handler(({ input }) =>
+      saveAutomationSettings(input),
+    ),
   },
   providers: providerProcedures,
   providerModels: providerModelProcedures,

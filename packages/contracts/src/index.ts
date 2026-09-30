@@ -7,6 +7,7 @@ import {
   markArticlesReadSchema,
   feedUpdateSchema,
   appStateSchema,
+  automationSettingsSchema,
   connectionSchema,
   digestGenerationEventSchema,
   digestGenerationStartSchema,
@@ -66,7 +67,10 @@ export const contract = {
       .input(markArticlesReadSchema)
       .output(z.object({ updated: z.number().int().nonnegative() })),
   },
-  settings: { save: procedure.input(settingsUpdateSchema).output(settingsSchema) },
+  settings: {
+    save: procedure.input(settingsUpdateSchema).output(settingsSchema),
+    saveAutomation: procedure.input(automationSettingsSchema).output(settingsSchema),
+  },
   providers: {
     list: procedure.output(providerListSchema),
     create: procedure.input(providerCreateSchema).output(providerConnectionSchema),

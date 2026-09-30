@@ -2,6 +2,8 @@
 
 本地优先的 RSS / Atom 阅读与 AI 日报应用，使用 pnpm workspace + Turborepo 管理。Web 前端与 Express/oRPC 后端共用一个本地 HTTP 服务，默认访问 `http://127.0.0.1:3000`；Tauri 桌面客户端保留独立运行环境和原有数据目录。
 
+“设置”包含订阅自动刷新、每日自动生成和模型管理；兴趣筛选与模板在“日报设置”中编辑。自动任务默认关闭，仅在应用运行期间执行。保存规则与运行边界见 [设置说明](docs/settings.md)。
+
 ## 开始使用
 
 需要 Node.js 24+ 和 pnpm 10.32.1。先链接依赖，再构建原生 SQLite 模块和安装 Git hooks：

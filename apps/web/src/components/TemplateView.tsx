@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { ui } from '@daily-signal/ui/styles';
 import { useAtom } from 'jotai';
-import { Check, Clock3, FilePenLine, RotateCcw, Save } from 'lucide-react';
+import { Check, FilePenLine, RotateCcw, Save } from 'lucide-react';
 import { settingsSchema } from '@daily-signal/domain';
 import type { Settings, SettingsUpdate } from '@daily-signal/domain';
 import type { ViewProps } from '@daily-signal/client';
@@ -10,7 +9,6 @@ import { Button } from '@daily-signal/ui/button';
 import { Card } from '@daily-signal/ui/card';
 import { Badge } from '@daily-signal/ui/badge';
 import { Label } from '@daily-signal/ui/label';
-import { Input } from '@daily-signal/ui/input';
 import { Textarea } from '@daily-signal/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@daily-signal/ui/tabs';
 import { RichMarkdown } from './Report';
@@ -26,31 +24,6 @@ export function TemplateView({
   const [draft, setTemplate] = useAtom(templateDraftAtom);
   const template = draft ?? state.settings.template;
   const dirty = template !== state.settings.template;
-  const [autoDigestDraft, setAutoDigestDraft] = useState<Settings['autoDigest'] | null>(null);
-  const autoDigest = autoDigestDraft ?? state.settings.autoDigest;
-  const autoDigestDirty =
-    autoDigest.enabled !== state.settings.autoDigest.enabled ||
-    autoDigest.time !== state.settings.autoDigest.time;
-  const automationReady = Boolean(state.defaultProviderModelId && state.hasApiKey);
-  const autoDigestTimeValid = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(autoDigest.time);
-
-  function updateAutoDigest(changes: Partial<Settings['autoDigest']>) {
-    setAutoDigestDraft({ ...autoDigest, ...changes });
-  }
-
-  function saveAutoDigest() {
-    void perform(
-      '保存自动日报设置',
-      async () => {
-        await saveSettings(settingsSchema.parse({ ...state.settings, autoDigest }));
-        setAutoDigestDraft(null);
-      },
-      autoDigest.enabled
-        ? `自动日报将在每天本地时间 ${autoDigest.time} 生成。`
-        : '自动日报已关闭。',
-    );
-  }
-
   function save() {
     void perform(
       '保存日报模板',
@@ -147,76 +120,6 @@ export function TemplateView({
           <Button disabled={!!busy || !dirty || !template.trim()} onClick={save}>
             <Save />
             保存模板
-          </Button>
-        </div>
-      </Card>
-      <Card className="mt-4 gap-3 p-4 shadow-none max-[640px]:py-4.75 max-[640px]:px-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <Clock3 className="mt-0.5 text-primary" size={20} />
-            <div>
-              <h2 className="text-sm font-semibold">自动生成日报</h2>
-              <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-                应用运行时按本地时间生成，当天已有日报则跳过。
-              </p>
-            </div>
-          </div>
-          <Badge variant={autoDigest.enabled ? 'secondary' : 'outline'}>
-            {autoDigest.enabled ? '已启用' : '已关闭'}
-          </Badge>
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_180px] items-end gap-5 max-[640px]:grid-cols-1">
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border bg-secondary/40 px-4 text-sm">
-            <input
-              type="checkbox"
-              checked={autoDigest.enabled}
-              disabled={!!busy}
-              onChange={(event) => updateAutoDigest({ enabled: event.target.checked })}
-            />
-            <span>
-              <strong>每天自动生成</strong>
-              <small className="ml-2 text-muted-foreground">会产生模型调用费用</small>
-            </span>
-          </label>
-          <div className={ui.field}>
-            <Label htmlFor="auto-digest-time">自动生成时间</Label>
-            <Input
-              id="auto-digest-time"
-              type="time"
-              step={60}
-              value={autoDigest.time}
-              disabled={!!busy}
-              onChange={(event) => updateAutoDigest({ time: event.target.value })}
-            />
-          </div>
-        </div>
-        {!automationReady && autoDigest.enabled && (
-          <p className="text-[11px] text-destructive">
-            启用前，请先在“模型与服务商”中设置带 API Key 的默认模型。
-          </p>
-        )}
-        {!autoDigestTimeValid && (
-          <p className="text-[11px] text-destructive">请选择有效的自动生成时间。</p>
-        )}
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
-          <Button
-            variant="ghost"
-            disabled={!!busy || !autoDigestDirty}
-            onClick={() => setAutoDigestDraft(null)}
-          >
-            放弃自动任务修改
-          </Button>
-          <Button
-            disabled={
-              !!busy ||
-              !autoDigestDirty ||
-              !autoDigestTimeValid ||
-              (autoDigest.enabled && !automationReady)
-            }
-            onClick={saveAutoDigest}
-          >
-            <Save />
-            保存自动任务
           </Button>
         </div>
       </Card>

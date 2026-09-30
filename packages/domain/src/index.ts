@@ -84,10 +84,18 @@ export const autoDigestSettingsSchema = z
       .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, '自动日报时间必须使用 HH:mm 24 小时格式。'),
   })
   .strict();
+export const feedRefreshSettingsSchema = z
+  .object({ intervalMinutes: z.literal([0, 15, 30, 60, 120, 240]) })
+  .strict();
+export const automationSettingsSchema = z
+  .object({ autoDigest: autoDigestSettingsSchema, feedRefresh: feedRefreshSettingsSchema })
+  .strict();
+export type AutomationSettings = z.infer<typeof automationSettingsSchema>;
 export const settingsSchema = modelConfigSchema
   .extend({
     template: z.string().trim().min(1, '模板不能为空。').max(12_000),
     autoDigest: autoDigestSettingsSchema.default({ enabled: false, time: '20:00' }),
+    feedRefresh: feedRefreshSettingsSchema.default({ intervalMinutes: 0 }),
     curation: curationSettingsSchema.default(() => curationSettingsSchema.parse({})),
   })
   .strict();

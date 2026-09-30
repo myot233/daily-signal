@@ -74,6 +74,7 @@ test('legacy database migrates URL, model, template, thinking and key exactly on
     assert.deepEqual(migrated.state.settings, {
       ...value,
       autoDigest: { enabled: false, time: '20:00' },
+      feedRefresh: { intervalMinutes: 0 },
       curation: curationSettingsSchema.parse({}),
     });
     assert.equal(migrated.state.providers.length, 1);

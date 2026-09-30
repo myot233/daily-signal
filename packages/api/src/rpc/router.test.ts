@@ -37,6 +37,88 @@ test('typed oRPC client persists settings and returns the Zod-defined state', as
   assert.equal(reloaded.defaultTemplate, initial.defaultTemplate);
 });
 
+test('automation settings preserve templates and provider credentials, including with no default model', async () => {
+  const initial = await rpc.state();
+  const provider = await rpc.providers.create({
+    presetId: 'custom',
+    name: 'Automation connection',
+    protocol: 'anthropic-messages',
+    baseUrl: 'https://automation.example.com/v1',
+    enabled: true,
+    credential: 'AUTOMATION-PRIVATE-KEY',
+    initialModelId: 'automation-model',
+  });
+  await rpc.defaultModel.set({ providerModelId: provider.models[0]!.id });
+  const before = await rpc.state();
+  const saved = await rpc.settings.saveAutomation({
+    autoDigest: { enabled: true, time: '21:30' },
+    feedRefresh: { intervalMinutes: 30 },
+  });
+  const reloaded = await rpc.state();
+  assert.deepEqual(reloaded.settings, saved);
+  assert.equal(saved.template, before.settings.template);
+  assert.deepEqual(saved.curation, before.settings.curation);
+  assert.deepEqual(reloaded.providers, before.providers);
+  const { getApiKey } = await import('@daily-signal/settings');
+  assert.equal(getApiKey(), 'AUTOMATION-PRIVATE-KEY');
+  assert.equal(JSON.stringify(reloaded).includes('AUTOMATION-PRIVATE-KEY'), false);
+  await rpc.settings.saveAutomation({
+    autoDigest: { enabled: false, time: '21:30' },
+    feedRefresh: { intervalMinutes: 0 },
+  });
+  await rpc.defaultModel.set({ providerModelId: null });
+  await rpc.providers.remove({ id: provider.id, revision: provider.revision });
+  const noModel = await rpc.settings.saveAutomation({
+    autoDigest: { enabled: false, time: '20:00' },
+    feedRefresh: { intervalMinutes: 60 },
+  });
+  assert.equal(noModel.feedRefresh.intervalMinutes, 60);
+  await rpc.defaultModel.set({ providerModelId: initial.defaultProviderModelId });
+  await rpc.settings.saveAutomation({
+    autoDigest: initial.settings.autoDigest,
+    feedRefresh: initial.settings.feedRefresh,
+  });
+});
+
+test('invalid automation input and missing credentials cannot change saved settings', async () => {
+  const initial = await rpc.state();
+  await rpc.defaultModel.set({ providerModelId: null });
+  const before = (await rpc.state()).settings;
+  await assert.rejects(
+    rpc.settings.saveAutomation({
+      autoDigest: { enabled: true, time: '20:00' },
+      feedRefresh: { intervalMinutes: 15 },
+    }),
+    { code: 'BAD_REQUEST' },
+  );
+  await rpc.defaultModel.set({ providerModelId: initial.defaultProviderModelId });
+  await assert.rejects(
+    rpc.settings.saveAutomation({
+      autoDigest: { enabled: true, time: '20:00' },
+      feedRefresh: { intervalMinutes: 15 },
+    }),
+    { code: 'BAD_REQUEST' },
+  );
+  for (const input of [
+    { autoDigest: { enabled: false, time: '25:00' }, feedRefresh: { intervalMinutes: 15 } },
+    { autoDigest: before.autoDigest, feedRefresh: { intervalMinutes: 1 } },
+    {
+      autoDigest: before.autoDigest,
+      feedRefresh: before.feedRefresh,
+      apiKey: 'FORBIDDEN-PREFERENCE-KEY',
+    },
+  ]) {
+    const response = await fetch(`${baseUrl}/rpc/settings/saveAutomation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: input }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.text()).includes('FORBIDDEN-PREFERENCE-KEY'), false);
+  }
+  assert.deepEqual((await rpc.state()).settings, before);
+});
+
 test('typed icon RPC reads local image data, excludes it from app state and rejects missing feeds', async () => {
   const { db } = await import('@daily-signal/database');
   const { feeds, feedIcons } = await import('@daily-signal/database/schema');
