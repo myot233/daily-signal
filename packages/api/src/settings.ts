@@ -1,11 +1,21 @@
 import { eq } from 'drizzle-orm';
-import type { Settings, SettingsUpdate } from '@daily-signal/domain';
+import type { AutomationSettings, Settings, SettingsUpdate } from '@daily-signal/domain';
 import { db } from '@daily-signal/database';
 import { settings } from '@daily-signal/database/schema';
 import { normalizePublicUrl } from '@daily-signal/network';
-import { replaceLegacyDefaultConnection } from '@daily-signal/providers';
+import { replaceLegacyDefaultConnection, resolveProviderSnapshot } from '@daily-signal/providers';
 import { getSettings } from '@daily-signal/settings';
 import { refreshDailyDigestSchedule } from '@daily-signal/ai/daily-digest-scheduler';
+import { feedRefreshScheduler } from './feed-refresh-scheduler';
+
+export function saveAutomationSettings(input: AutomationSettings): Settings {
+  if (input.autoDigest.enabled) resolveProviderSnapshot();
+  const value = { ...getSettings(), ...input };
+  db.update(settings).set({ value }).where(eq(settings.id, 1)).run();
+  refreshDailyDigestSchedule();
+  feedRefreshScheduler.refresh();
+  return getSettings();
+}
 
 export function saveSettings(input: SettingsUpdate): Settings {
   normalizePublicUrl(input.baseUrl);
@@ -20,5 +30,6 @@ export function saveSettings(input: SettingsUpdate): Settings {
   }
   db.update(settings).set({ value }).where(eq(settings.id, 1)).run();
   refreshDailyDigestSchedule();
+  feedRefreshScheduler.refresh();
   return getSettings();
 }
