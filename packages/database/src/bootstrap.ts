@@ -30,6 +30,7 @@ export function bootstrapDatabase(db: BetterSQLite3Database, sqlite: Database.Da
         template: defaultTemplate,
         deepseekThinking: 'disabled',
         autoDigest: { enabled: false, time: '20:00' },
+        feedRefresh: { intervalMinutes: 0 },
         curation: curationSettingsSchema.parse({}),
       },
     })

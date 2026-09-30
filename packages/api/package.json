@@ -11,6 +11,7 @@
     "./rpc/providers": "./src/rpc/providers.ts",
     "./rpc/router": "./src/rpc/router.ts",
     "./settings": "./src/settings.ts",
+    "./feed-refresh-scheduler": "./src/feed-refresh-scheduler.ts",
     "./state": "./src/state.ts"
   },
   "scripts": {

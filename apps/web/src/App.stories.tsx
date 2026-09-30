@@ -166,6 +166,8 @@ export const Archive: Story = { args: { path: '/archive' } };
 export const Template: Story = { args: { path: '/template' } };
 export const Settings: Story = { args: { path: '/settings' } };
 export const EmptySettings: Story = { args: { path: '/settings', empty: true } };
+export const Providers: Story = { args: { path: '/settings/providers' } };
+export const EmptyProviders: Story = { args: { path: '/settings/providers', empty: true } };
 export const EmptyArticles: Story = { args: { path: '/articles', empty: true } };
 export const AddFeed: Story = {
   args: { path: '/feeds' },
