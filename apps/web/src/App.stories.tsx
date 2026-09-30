@@ -9,6 +9,7 @@ import {
   feedRefreshQueryOptions,
 } from '@daily-signal/client/query';
 import { providerConnectionSchema } from '@daily-signal/domain/providers/schemas';
+import type { AppState } from '@daily-signal/domain';
 import { createAppState } from './stories/fixtures';
 import App from './App';
 
@@ -73,7 +74,15 @@ const populated = createAppState({
   ],
 });
 
-function AppFixture({ path, empty }: { path: string; empty: boolean }) {
+function AppFixture({
+  path,
+  empty,
+  state: fixtureState,
+}: {
+  path: string;
+  empty: boolean;
+  state?: AppState;
+}) {
   const [client] = useState(() => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -81,11 +90,12 @@ function AppFixture({ path, empty }: { path: string; empty: boolean }) {
       },
     });
     // Seed the real query boundary. No HTTP server, credentials or model calls.
+    const state = fixtureState ?? (empty ? createAppState() : populated);
     queryClient.setQueryDefaults(appStateQueryOptions.queryKey, {
-      queryFn: () => (empty ? createAppState() : populated),
+      queryFn: () => state,
       staleTime: Infinity,
     });
-    queryClient.setQueryData(appStateQueryOptions.queryKey, empty ? createAppState() : populated);
+    queryClient.setQueryData(appStateQueryOptions.queryKey, state);
     queryClient.setQueryDefaults(feedRefreshQueryOptions.queryKey, { staleTime: Infinity });
     queryClient.setQueryData(feedRefreshQueryOptions.queryKey, null);
     queryClient.setQueryData(feedIconQueryOptions(feed).queryKey, null);
@@ -177,5 +187,32 @@ export const Reader: Story = {
         within(canvasElement.ownerDocument.body).getByRole('region', { name: '文章内容' }),
       ).toBeVisible(),
     );
+  },
+};
+
+export const LargeLibraryNavigation: Story = {
+  tags: ['!ui-audit'],
+  args: {
+    state: createAppState({
+      feeds: [{ ...feed, articleCount: 3000 }],
+      articles: Array.from({ length: 3000 }, (_, index) => ({
+        ...articles[0],
+        id: `navigation-article-${index}`,
+        title: `导航测试文章 ${index + 1}`,
+        content: articles[0].content.repeat(40),
+      })),
+    }),
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('link', { name: /订阅与文章/ }));
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: '订阅与文章' }),
+    ).toBeVisible();
+    await expect(canvas.getByText('3000 篇符合条件')).toBeVisible();
+    await expect(within(canvas.getByLabelText('文章列表')).getAllByRole('article')).toHaveLength(
+      50,
+    );
+    await expect(canvas.getByRole('status')).toHaveTextContent('第 1 / 60 页');
   },
 };

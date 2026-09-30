@@ -606,3 +606,62 @@ export const DesktopSplitReader: Story = {
     await expect(canvas.getByText('3 篇符合条件')).toBeVisible();
   },
 };
+
+const largeLibrary = Array.from({ length: 123 }, (_, index) => ({
+  ...articles[0],
+  id: `large-article-${index}`,
+  title: `长列表文章 ${index + 1}`,
+  content: `${'长正文仍须完整保留，列表只显示摘要。'.repeat(800)}${index === 122 ? '唯一末尾关键词' : ''}`,
+}));
+
+export const PaginatedLibrary: Story = {
+  args: { state: createAppState({ feeds, articles: largeLibrary }) },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    const list = within(canvas.getByLabelText('文章列表'));
+    await expect(list.getAllByRole('article')).toHaveLength(50);
+    await expect(canvas.getByText('123 篇符合条件')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: '上一页' })).toBeDisabled();
+    await expect(
+      list.getAllByRole('article')[0].querySelector('p')!.textContent!.length,
+    ).toBeLessThanOrEqual(280);
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await expect(list.getByRole('button', { name: largeLibrary[50].title })).toBeVisible();
+    await expect(
+      list.queryByRole('button', { name: largeLibrary[0].title }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(list.getByRole('button', { name: largeLibrary[50].title }));
+    const page = within(canvasElement.ownerDocument.body);
+    const dialog = await page.findByRole('dialog');
+    const reader = within(dialog);
+    await expect(reader.getByRole('status', { name: '阅读位置' })).toHaveTextContent('51 / 123');
+    await expect(reader.getByText(largeLibrary[50].content)).toBeVisible();
+    await userEvent.click(reader.getByRole('button', { name: '上一篇' }));
+    await expect(reader.getByRole('status', { name: '阅读位置' })).toHaveTextContent('50 / 123');
+    await userEvent.click(reader.getByRole('button', { name: '下一篇' }));
+    await expect(reader.getByRole('heading', { name: largeLibrary[50].title })).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(list.getByRole('button', { name: largeLibrary[50].title })).toHaveFocus();
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await expect(list.getAllByRole('article')).toHaveLength(23);
+    await expect(canvas.getByRole('button', { name: '下一页' })).toBeDisabled();
+    await userEvent.type(canvas.getByRole('textbox', { name: '搜索文章' }), '唯一末尾关键词');
+    await expect(canvas.getByText('1 篇符合条件')).toBeVisible();
+    await expect(list.getByRole('button', { name: largeLibrary[122].title })).toBeVisible();
+    await expect(
+      canvas.queryByRole('navigation', { name: '文章列表分页' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: '清除筛选' }));
+    await expect(list.getByRole('button', { name: largeLibrary[0].title })).toBeVisible();
+    await expect(list.getAllByRole('article')).toHaveLength(50);
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: '按来源筛选' }), 'design');
+    await expect(canvas.getByRole('heading', { name: '没有匹配的文章' })).toBeVisible();
+    await userEvent.selectOptions(
+      canvas.getByRole('combobox', { name: '按来源筛选' }),
+      'engineering',
+    );
+    await expect(list.getByRole('button', { name: largeLibrary[0].title })).toBeVisible();
+  },
+};
