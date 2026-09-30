@@ -11,6 +11,8 @@ import { ArticlePreview } from './ArticlePreview';
 import type { Article } from '@daily-signal/domain';
 
 const translateArticle: TranslateArticle = (input, signal) => rpc.ai.translate(input, { signal });
+const pageSize = 50;
+const summaryLength = 280;
 
 export function ArticlesView({
   state,
@@ -61,6 +63,7 @@ export function ArticlesView({
   const [previewOpen, setPreviewOpen] = useState(false);
   const previewTrigger = useRef<HTMLButtonElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
+  const articleList = useRef<HTMLDivElement | null>(null);
 
   const selectedFeed = state.feeds.some((feed) => feed.id === feedId) ? feedId : '';
   const feed = state.feeds.find((item) => item.id === selectedFeed);
@@ -80,6 +83,28 @@ export function ArticlesView({
           `${article.title}\n${article.content}`.toLocaleLowerCase('zh-CN').includes(search)),
     );
   }, [state.articles, selectedFeed, query]);
+
+  const [pagination, setPagination] = useState({ feedId: selectedFeed, query, index: 0 });
+  const pageCount = Math.ceil(articles.length / pageSize);
+  const page =
+    pagination.feedId === selectedFeed && pagination.query === query
+      ? Math.min(pagination.index, Math.max(0, pageCount - 1))
+      : 0;
+  if (
+    pagination.feedId !== selectedFeed ||
+    pagination.query !== query ||
+    pagination.index !== page
+  ) {
+    setPagination({ feedId: selectedFeed, query, index: page });
+  }
+  const pageStart = page * pageSize;
+  const visibleArticles = articles.slice(pageStart, pageStart + pageSize);
+
+  function changePage(index: number) {
+    setPagination({ feedId: selectedFeed, query, index });
+    articleList.current?.scrollTo({ top: 0 });
+    heading.current?.scrollIntoView({ block: 'nearest' });
+  }
 
   function openPreview(index: number, trigger: HTMLButtonElement) {
     previewTrigger.current = trigger;
@@ -187,9 +212,9 @@ export function ArticlesView({
         )}
       </div>
       <div className={inline ? 'reader-panes' : undefined}>
-        <div className="article-list" aria-label="文章列表">
+        <div className="article-list" aria-label="文章列表" ref={articleList}>
           {articles.length ? (
-            articles.map((article, index) => {
+            visibleArticles.map((article, index) => {
               const url = safeUrl(article.url);
               const selected = previewOpen && preview?.articles[preview.index]?.id === article.id;
               return (
@@ -209,13 +234,13 @@ export function ArticlesView({
                       type="button"
                       aria-haspopup={inline ? undefined : 'dialog'}
                       aria-pressed={inline ? selected : undefined}
-                      onClick={(event) => openPreview(index, event.currentTarget)}
+                      onClick={(event) => openPreview(pageStart + index, event.currentTarget)}
                     >
                       {article.title}
                     </button>
                   </ArticleHeading>
                   <p className="line-clamp-2 text-muted-foreground wrap-anywhere">
-                    {article.content.trim() || '暂无摘要'}
+                    {article.content.trim().slice(0, summaryLength) || '暂无摘要'}
                   </p>
                   {!inline && url && (
                     <a
@@ -256,6 +281,32 @@ export function ArticlesView({
                 <Button onClick={() => navigate('feeds')}>前往订阅源</Button>
               )}
             </div>
+          )}
+          {pageCount > 1 && (
+            <nav
+              aria-label="文章列表分页"
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-3"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => changePage(page - 1)}
+              >
+                上一页
+              </Button>
+              <span className="text-xs text-muted-foreground" role="status">
+                第 {page + 1} / {pageCount} 页
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === pageCount - 1}
+                onClick={() => changePage(page + 1)}
+              >
+                下一页
+              </Button>
+            </nav>
           )}
         </div>
         {inline &&
