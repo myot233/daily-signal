@@ -1,6 +1,6 @@
 import { ui } from '@daily-signal/ui/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, BookOpen, Search, X } from 'lucide-react';
+import { ArrowUpRight, Search, X } from 'lucide-react';
 import { formatDate, safeUrl, rpc } from '@daily-signal/client';
 import type { View, ViewProps } from '@daily-signal/client';
 import { Button } from '@daily-signal/ui/button';
@@ -148,20 +148,22 @@ export function ArticlesView({
         <Heading ref={heading} tabIndex={-1}>
           {sourceFilter ? feed?.title || '全部文章' : '文章'}
         </Heading>
-        <span className="text-xs text-muted-foreground">{articles.length} 篇符合条件</span>
+        <span className="text-xs text-muted-foreground">{articles.length} 篇</span>
       </div>
       {sourceFilter && feed && (
         <div className="subscription-feed-info">
-          <a href={safeUrl(feed.url)} target="_blank" rel="noopener noreferrer">
-            {feed.url} <ArrowUpRight size={12} aria-hidden="true" />
-          </a>
-          <p>
-            {feed.error
-              ? `刷新失败：${feed.error}`
-              : feed.lastFetchedAt
+          {feed.error && <p className="text-destructive">刷新失败：{feed.error}</p>}
+          <details>
+            <summary>订阅详情</summary>
+            <a href={safeUrl(feed.url)} target="_blank" rel="noopener noreferrer">
+              {feed.url} <ArrowUpRight size={12} aria-hidden="true" />
+            </a>
+            <p>
+              {feed.lastFetchedAt
                 ? `上次更新 ${formatDate(feed.lastFetchedAt, true)}`
                 : '尚未刷新，等待获取文章'}
-          </p>
+            </p>
+          </details>
         </div>
       )}
       <div className="reader-filters">
@@ -215,7 +217,6 @@ export function ArticlesView({
         <div className="article-list" aria-label="文章列表" ref={articleList}>
           {articles.length ? (
             visibleArticles.map((article, index) => {
-              const url = safeUrl(article.url);
               const selected = previewOpen && preview?.articles[preview.index]?.id === article.id;
               return (
                 <article
@@ -242,23 +243,11 @@ export function ArticlesView({
                   <p className="line-clamp-2 text-muted-foreground wrap-anywhere">
                     {article.content.trim().slice(0, summaryLength) || '暂无摘要'}
                   </p>
-                  {!inline && url && (
-                    <a
-                      className="mt-1 inline-flex items-center gap-1 text-xs text-primary"
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      打开原文
-                      <ArrowUpRight size={12} />
-                    </a>
-                  )}
                 </article>
               );
             })
           ) : (
             <div className={ui.emptyState}>
-              <BookOpen size={26} strokeWidth={1.5} />
               <ArticleHeading>
                 {query || selectedFeed ? '没有匹配的文章' : '暂无文章'}
               </ArticleHeading>
@@ -312,9 +301,7 @@ export function ArticlesView({
         {inline &&
           (reader || (
             <div className={ui.emptyState}>
-              <BookOpen size={28} strokeWidth={1.5} />
               <h2>选择一篇文章</h2>
-              <p>在左侧列表中选择文章以阅读。</p>
             </div>
           ))}
       </div>

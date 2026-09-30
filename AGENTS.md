@@ -118,7 +118,7 @@ pnpm check && pnpm build && pnpm build-storybook
 
 ## UI 与代码风格
 
-- 优先复用 `packages/ui/src/components/`、`packages/ui/src/lib/ui-styles.ts` 和现有主题变量；保持浅色中性背景、少量暖色强调和中文文案。应用界面采用紧凑工具栏、列表与分栏阅读布局；正文保留舒适的阅读字号，不添加宣传语或重复解释。
+- 优先复用 `packages/ui/src/components/`、`packages/ui/src/lib/ui-styles.ts` 和现有主题变量；保持黑白灰、细分隔线、小圆角和中文文案；错误与破坏性操作保留语义红色。应用界面采用紧凑工具栏、列表与分栏阅读布局；正文保留舒适的阅读字号。避免装饰性阴影、常驻无操作状态、重复计数、重复入口和宣传语；次要元数据按需展开。
 - 使用语义化 HTML，保持标题层级连续，表单控件有可访问标签，纯图标按钮有名称；保留键盘导航与减少动画偏好。
 - 保持 TypeScript 严格类型；外部输入用 Zod schema 校验，不以 `any`、不安全断言或关闭 lint 绕过契约。
 - 全仓使用根目录 `.oxfmtrc.json` 中的 Oxfmt 规则；前端遵循相邻文件风格，不借功能改动大面积重排文件。

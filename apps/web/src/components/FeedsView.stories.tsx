@@ -90,10 +90,14 @@ export const SelectAndRead: Story = {
     const canvas = within(canvasElement);
     const sources = within(canvas.getByRole('complementary', { name: '订阅源列表' }));
     const search = canvas.getByRole('textbox', { name: '搜索文章' });
-    await expect(canvas.getByText('2 篇符合条件')).toBeVisible();
+    await expect(canvas.getByText('2 篇')).toBeVisible();
     await userEvent.click(sources.getByRole('button', { name: '工程周刊' }));
     await expect(canvas.getByRole('button', { name: articles[0].title })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: articles[1].title })).not.toBeInTheDocument();
+    await expect(canvas.getByText(feeds[0].url)).not.toBeVisible();
+    await userEvent.click(canvas.getByText('订阅详情'));
+    await expect(canvas.getByRole('link', { name: feeds[0].url })).toBeVisible();
+    await userEvent.click(canvas.getByText('订阅详情'));
     await userEvent.click(canvas.getByRole('button', { name: articles[0].title }));
     const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
     const reader = within(dialog);
@@ -103,7 +107,7 @@ export const SelectAndRead: Story = {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     await expect(canvas.getByRole('button', { name: articles[0].title })).toHaveFocus();
     await userEvent.type(search, '阅读');
-    await expect(canvas.getByText('0 篇符合条件')).toBeVisible();
+    await expect(canvas.getByText('0 篇')).toBeVisible();
     await userEvent.click(sources.getByRole('button', { name: '设计观察' }));
     await expect(search).toHaveValue('阅读');
     await expect(canvas.getByRole('button', { name: articles[1].title })).toBeVisible();
@@ -114,10 +118,10 @@ export const SelectAndRead: Story = {
       'true',
     );
     await expect(search).toHaveValue('');
-    await expect(canvas.getByText('2 篇符合条件')).toBeVisible();
+    await expect(canvas.getByText('2 篇')).toBeVisible();
     await userEvent.click(sources.getByRole('button', { name: '等待更新的订阅' }));
     await expect(canvas.getByText('刷新失败：订阅源暂时不可用')).toBeVisible();
-    await expect(canvas.getByText('0 篇符合条件')).toBeVisible();
+    await expect(canvas.getByText('0 篇')).toBeVisible();
     await userEvent.click(sources.getByRole('button', { name: '删除 等待更新的订阅' }));
     const confirmation = await within(canvasElement.ownerDocument.body).findByRole('dialog', {
       name: '删除这个订阅源？',

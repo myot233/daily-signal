@@ -1,10 +1,9 @@
 import { ui } from '@daily-signal/ui/styles';
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Download, LoaderCircle, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@daily-signal/ui/button';
 import { Input } from '@daily-signal/ui/input';
 import { Label } from '@daily-signal/ui/label';
-import { Badge } from '@daily-signal/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -74,10 +73,6 @@ export function FeedsView({
       if (file.size > 2 * 1024 * 1024) throw new Error('OPML 文件不能超过 2 MiB。');
       const result = await rpc.feeds.import(importOpmlSchema.parse({ opml: await file.text() }));
       setImportResult(result);
-      notify({
-        kind: result.errors.length ? 'warning' : 'success',
-        message: `订阅已导入：新增 ${result.imported} 个，跳过 ${result.skipped} 个，失败 ${result.errors.length} 个。${result.imported ? '文章正在后台抓取。' : ''}`,
-      });
     });
   }
   return (
@@ -87,16 +82,7 @@ export function FeedsView({
           <h1>订阅与文章</h1>
           <FeedRefreshProgress value={feedRefresh} />
         </div>
-        <Button disabled={!!busy} onClick={() => setAdding(true)}>
-          <Plus />
-          添加订阅源
-        </Button>
-      </div>
-      <div className="subscription-toolbar">
-        <span className="inline-flex gap-2.5 items-center text-[12px] font-semibold">
-          我的订阅 <Badge variant="secondary">{state.feeds.length}</Badge>
-        </span>
-        <div className="button-row flex items-center flex-wrap gap-1.75">
+        <div className="subscription-actions">
           <input
             ref={fileInput}
             type="file"
@@ -146,25 +132,43 @@ export function FeedsView({
             <RefreshCw className={refreshing ? 'animate-spin' : ''} />
             刷新订阅
           </Button>
+          <Button size="sm" disabled={!!busy} onClick={() => setAdding(true)}>
+            <Plus />
+            添加订阅源
+          </Button>
         </div>
       </div>
       {importResult && (
         <div
-          className={`border py-3.5 px-4.25 rounded-[7px] mb-5.5 text-[12px] leading-[1.8] wrap-anywhere [&.success]:bg-[#edf2e8] [&.success]:text-[#4d6542] [&.success]:border-[#d5e0cc] [&.warning]:bg-[#f7efdc] [&.warning]:text-[#826426] [&.warning]:border-[#e8d8b2] [&.error]:bg-[#f9eae3] [&.error]:text-[#a14536] [&.error]:border-[#edc8ba] [&_ul]:pl-5 [&_ul]:list-disc [&_ul]:mt-2 [&_ul]:mx-0 [&_ul]:mb-0 [&_details]:mt-1.5 [&_>_button]:mt-2 ${importResult.errors.length ? 'warning' : 'success'}`}
+          className={`app-notice subscription-import ${importResult.errors.length ? 'warning' : 'success'}`}
+          role="status"
         >
-          <p>
-            OPML 导入结果：新增 {importResult.imported} 个 · 跳过 {importResult.skipped} 个 · 失败{' '}
-            {importResult.errors.length} 个
-          </p>
-          {importResult.errors.length > 0 && (
-            <ul>
-              {importResult.errors.map((item, index) => (
-                <li key={index}>
-                  <strong>{item.url || '未知订阅源'}</strong>：{item.error}
-                </li>
-              ))}
-            </ul>
-          )}
+          <div>
+            <p>
+              OPML 导入结果：新增 {importResult.imported} 个 · 跳过 {importResult.skipped} 个 · 失败{' '}
+              {importResult.errors.length} 个{importResult.imported > 0 && '。文章正在后台抓取。'}
+            </p>
+            {importResult.errors.length > 0 && (
+              <details>
+                <summary>失败详情</summary>
+                <ul>
+                  {importResult.errors.map((item, index) => (
+                    <li key={index}>
+                      <strong>{item.url || '未知订阅源'}</strong>：{item.error}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="关闭导入结果"
+            onClick={() => setImportResult(null)}
+          >
+            <X />
+          </Button>
         </div>
       )}
       <div className="subscription-panes">
@@ -177,7 +181,6 @@ export function FeedsView({
               aria-pressed={!selectedFeedId}
               onClick={() => setFeedId('')}
             >
-              <BookOpen size={17} aria-hidden="true" />
               <span className="subscription-source-name">全部文章</span>
               <span className="subscription-count">{state.articles.length}</span>
             </button>
@@ -194,9 +197,11 @@ export function FeedsView({
                   <CachedFeedIcon feed={feed} />
                   <span className="subscription-source-label">
                     <span className="subscription-source-name">{feed.title}</span>
-                    <span className="subscription-source-category">
-                      {feed.error ? '刷新失败' : feed.category || '未分类'}
-                    </span>
+                    {(feed.error || feed.category) && (
+                      <span className="subscription-source-category">
+                        {feed.error ? '刷新失败' : feed.category}
+                      </span>
+                    )}
                   </span>
                   <span className="subscription-count">{feed.articleCount}</span>
                 </button>

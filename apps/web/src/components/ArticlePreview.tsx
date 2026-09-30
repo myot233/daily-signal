@@ -4,7 +4,6 @@ import type { Article } from '@daily-signal/domain';
 import { formatDate, safeUrl } from '@daily-signal/client';
 import { ArticleTranslation } from './ArticleTranslation';
 import type { TranslateArticle, TranslationModel } from './ArticleTranslation';
-import { Badge } from '@daily-signal/ui/badge';
 import { Button } from '@daily-signal/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@daily-signal/ui/dialog';
 
@@ -74,14 +73,14 @@ export function ArticlePreview({
         <Title
           ref={title}
           tabIndex={-1}
-          className="rounded-sm font-serif text-[26px] font-medium leading-normal wrap-anywhere"
+          className="rounded-sm text-[24px] font-medium leading-normal wrap-anywhere"
         >
           {article.title}
         </Title>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground [&_[data-slot=badge]]:whitespace-normal [&_[data-slot=badge]]:wrap-anywhere">
-          <Badge variant="secondary">{article.feedTitle}</Badge>
+          <span>{article.feedTitle}</span>
           <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, true)}</time>
-          {article.dateEstimated && <Badge variant="outline">估计日期</Badge>}
+          {article.dateEstimated && <span>估计日期</span>}
         </div>
         {article.dateEstimated && (
           <p className="mt-2 text-xs text-muted-foreground">

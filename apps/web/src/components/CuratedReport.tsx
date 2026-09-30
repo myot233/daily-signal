@@ -3,7 +3,6 @@ import type { Digest } from '@daily-signal/domain';
 import type { DigestCuration } from '@daily-signal/domain/curation';
 import { download, formatDate, safeUrl } from '@daily-signal/client';
 import { Button } from '@daily-signal/ui/button';
-import { Badge } from '@daily-signal/ui/badge';
 
 export function CuratedReport({
   digest,
@@ -16,12 +15,12 @@ export function CuratedReport({
 }) {
   const stats = curation.stats;
   return (
-    <article className="min-w-0 rounded-lg border bg-paper" aria-label="精选日报">
+    <article className="min-w-0 bg-paper" aria-label="精选日报">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div>
           <h2 className="text-base font-semibold">{digest.title}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {stats.inputCount} 篇文章 · {curation.cards.length} 条精选 · {stats.cachedCount} 篇复用
+            {stats.inputCount} 篇文章 · {curation.cards.length} 条精选
           </p>
         </div>
         <div className="flex gap-1">
@@ -57,11 +56,7 @@ export function CuratedReport({
             return (
               <section key={card.id} className="min-w-0 px-4 py-5 sm:px-5">
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  {card.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
+                  <span className="text-xs text-muted-foreground">{card.tags.join(' · ')}</span>
                   <span className="ml-auto text-xs text-muted-foreground">
                     {sources.length} 个来源 · {hasWebText ? '已提取正文' : '订阅摘要'}
                   </span>
@@ -134,6 +129,8 @@ export function CuratedReport({
         <details>
           <summary className="cursor-pointer">生成记录</summary>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+            <dt>缓存复用</dt>
+            <dd>{stats.cachedCount} 篇</dd>
             <dt>去重后文章</dt>
             <dd>{stats.uniqueCount} 篇</dd>
             <dt>达到门槛</dt>

@@ -1,17 +1,7 @@
 import { maxBy } from 'es-toolkit/array';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  Check,
-  CircleAlert,
-  LoaderCircle,
-  RefreshCw,
-  Rss,
-  Settings2,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowRight, Check, CircleAlert, LoaderCircle, RefreshCw } from 'lucide-react';
 import { digestInputSchema } from '@daily-signal/domain';
 import { protocolLabels } from '@daily-signal/domain/providers/catalog';
 import { dayBounds, formatDate, localDate } from '@daily-signal/client';
@@ -24,7 +14,6 @@ import type {
 import { ui } from '@daily-signal/ui/styles';
 import { Report } from './Report';
 import { Task, TaskContent, TaskItem, TaskTrigger } from './ai-elements/task';
-import { Badge } from '@daily-signal/ui/badge';
 import { Button } from '@daily-signal/ui/button';
 import { Input } from '@daily-signal/ui/input';
 import { Label } from '@daily-signal/ui/label';
@@ -140,9 +129,6 @@ export function TodayView({
     <>
       <div className={ui.viewHeading}>
         <h1>今日简报</h1>
-        <span className="text-xs text-muted-foreground">
-          {state.feeds.length} 个订阅 · {visibleArticles.length} 篇文章
-        </span>
       </div>
       <div className="today-workspace">
         <aside
@@ -151,7 +137,6 @@ export function TodayView({
           aria-busy={generating}
         >
           <form onSubmit={generate} className="grid gap-4">
-            <h2>生成日报</h2>
             <div className={ui.field}>
               <Label htmlFor="digest-date">日报日期</Label>
               <Input
@@ -199,19 +184,6 @@ export function TodayView({
                 {templateLabel}
               </button>
             </div>
-            {state.settings.curation.enabled && (
-              <div className="flex flex-wrap gap-1.5" aria-label="已选兴趣标签">
-                {state.settings.curation.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-                <span className="w-full text-xs text-muted-foreground">
-                  最多 {state.settings.curation.maxItems} 条 · 每标签最多{' '}
-                  {state.settings.curation.maxPerCategory} 条
-                </span>
-              </div>
-            )}
             {selectedModel && !selectedModel.provider.hasCredential && (
               <p className="text-xs leading-relaxed text-destructive">
                 缺少 API Key，
@@ -230,11 +202,7 @@ export function TodayView({
               <p className="text-xs text-muted-foreground">当天没有文章，请刷新订阅或更换日期。</p>
             )}
             <Button type="submit" disabled={!canGenerate}>
-              {generating ? (
-                <LoaderCircle aria-hidden="true" className="animate-spin" />
-              ) : (
-                <Sparkles aria-hidden="true" />
-              )}
+              {generating && <LoaderCircle aria-hidden="true" className="animate-spin" />}
               {generating ? '正在生成' : report ? '重新生成一版' : '生成日报'}
             </Button>
             <Button
@@ -249,6 +217,15 @@ export function TodayView({
             <details className="border-t pt-3 text-xs text-muted-foreground">
               <summary>生成详情</summary>
               <div className="mt-3 grid gap-2">
+                {state.settings.curation.enabled && (
+                  <div aria-label="已选兴趣标签">
+                    <p>{state.settings.curation.tags.join(' · ')}</p>
+                    <p>
+                      最多 {state.settings.curation.maxItems} 条 · 每标签最多{' '}
+                      {state.settings.curation.maxPerCategory} 条
+                    </p>
+                  </div>
+                )}
                 {selectedModel && <p>{selectedModelName}</p>}
                 <p>{selectedModelContext}</p>
                 <p>使用缓存文章，成功后自动归档。失败不会覆盖已有日报。</p>
@@ -316,27 +293,14 @@ export function TodayView({
             </details>
           )}
         </aside>
-        <section className="today-output" aria-labelledby="ai-output-title">
+        <section className="today-output" aria-label="日报内容">
           {report ? (
-            <>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 id="ai-output-title" className="text-sm font-semibold">
-                  最新生成结果
-                </h2>
-                <Button variant="ghost" size="sm" onClick={() => navigate('archive')}>
-                  全部归档
-                  <ArrowRight size={13} />
-                </Button>
-              </div>
-              <Report digest={report} />
-            </>
+            <Report digest={report} />
           ) : (
             <>
               <div className="mb-3 flex items-center justify-between">
-                <h2 id="ai-output-title" className="text-sm font-semibold">
-                  {date ? formatDate(date) : '所选日期'}
-                </h2>
-                <Badge variant="secondary">未生成</Badge>
+                <h2 className="text-sm font-semibold">{date ? formatDate(date) : '所选日期'}</h2>
+                <span className="text-xs text-muted-foreground">未生成</span>
               </div>
               {visibleArticles.length ? (
                 <div className="compact-panel">
@@ -366,16 +330,13 @@ export function TodayView({
               ) : (
                 <div className="compact-panel">
                   <div className={ui.emptyState}>
-                    <BookOpen size={28} strokeWidth={1.5} />
                     <h3>{state.feeds.length ? '当天暂无文章' : '添加订阅开始阅读'}</h3>
                     <div className="flex flex-wrap justify-center gap-2">
                       <Button variant="outline" onClick={() => navigate('feeds')}>
-                        <Rss />
                         {state.feeds.length ? '管理订阅' : '添加订阅'}
                       </Button>
                       {!state.hasApiKey && (
                         <Button variant="ghost" onClick={() => navigate('settings')}>
-                          <Settings2 />
                           配置模型
                         </Button>
                       )}

@@ -3,19 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { atom, useStore } from 'jotai';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
-import {
-  Archive,
-  CheckCircle2,
-  CircleAlert,
-  FilePenLine,
-  LoaderCircle,
-  Menu,
-  Newspaper,
-  RefreshCw,
-  Rss,
-  Settings2,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, CircleAlert, LoaderCircle, Menu, X } from 'lucide-react';
 import { Button } from '@daily-signal/ui/button';
 import { TodayView } from './components/TodayView';
 import { FeedsView } from './components/FeedsView';
@@ -34,12 +22,12 @@ import type { AppState, SettingsUpdate } from '@daily-signal/domain';
 import { appStateQueryOptions, feedRefreshQueryOptions } from '@daily-signal/client/query';
 
 const navigation = [
-  { id: 'today', path: '/', label: '今日简报', icon: Newspaper },
-  { id: 'feeds', path: '/feeds', label: '订阅与文章', icon: Rss },
-  { id: 'archive', path: '/archive', label: '日报归档', icon: Archive },
-  { id: 'template', path: '/template', label: '日报设置', icon: FilePenLine },
-  { id: 'settings', path: '/settings', label: '模型与服务商', icon: Settings2 },
-] satisfies { id: View; path: string; label: string; icon: typeof Newspaper }[];
+  { id: 'today', path: '/', label: '今日简报' },
+  { id: 'feeds', path: '/feeds', label: '订阅与文章' },
+  { id: 'archive', path: '/archive', label: '日报归档' },
+  { id: 'template', path: '/template', label: '日报设置' },
+  { id: 'settings', path: '/settings', label: '模型与服务商' },
+] satisfies { id: View; path: string; label: string }[];
 
 // These transient atoms coordinate events without putting request closures or
 // credentials in TanStack's mutation variables/cache.
@@ -309,9 +297,6 @@ export default function App() {
       </header>
       <aside className={`app-sidebar ${mobileOpen ? 'is-open' : ''}`} id="sidebar-navigation">
         <Link className="app-brand" to="/">
-          <span className="app-brand-icon">
-            <Newspaper size={17} />
-          </span>
           Daily Signal
         </Link>
         <nav aria-label="主导航">
@@ -322,35 +307,16 @@ export default function App() {
               end={item.id !== 'settings'}
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
             >
-              {
-                <>
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                  {state && ['feeds', 'archive'].includes(item.id) && (
-                    <span className="sidebar-count">
-                      {item.id === 'feeds' ? state.feeds.length : state.digests.length}
-                    </span>
-                  )}
-                </>
-              }
+              {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            disabled={!!busy || feedRefreshRunning || !state?.feeds.length}
-            onClick={refresh}
-          >
-            <RefreshCw size={15} className={feedRefreshRunning ? 'animate-spin' : ''} />
-            刷新订阅
-          </Button>
-          <span className="sidebar-status">
-            <span aria-hidden="true" />
-            {generationRunning ? '正在生成日报' : '本地运行'}
-          </span>
-        </div>
+        {generationRunning && (
+          <div className="sidebar-progress" role="status">
+            <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />
+            正在生成日报
+          </div>
+        )}
       </aside>
       <main className="app-main" id="main-content" tabIndex={-1}>
         {notice && (
