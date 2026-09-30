@@ -73,7 +73,7 @@ async function concurrent<T extends { url: string }>(
 }
 
 function ingest(tx: Transaction, feedId: string, incoming: ParsedArticle[]): number {
-  const previous = new Map(
+  const previous = new Map<string, typeof articles.$inferInsert>(
     tx
       .select()
       .from(articles)
@@ -142,7 +142,7 @@ export function createFeedService(
         };
         tx.insert(feeds).values(row).run();
         const articleCount = ingest(tx, row.id, loaded.items);
-        return { ...row, articleCount };
+        return { ...row, articleCount, unreadCount: articleCount };
       });
     } catch (error) {
       throw sourceError(error);

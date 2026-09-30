@@ -6,6 +6,7 @@ import { providerConnectionSchema } from '@daily-signal/domain/providers/schemas
 import type { TranslateArticle } from './ArticleTranslation';
 import type { Article, Feed } from '@daily-signal/domain';
 import type { Perform, View, ViewProps } from '@daily-signal/client';
+import { filterArticles } from '@daily-signal/domain/reader';
 import { createAppState } from '../stories/fixtures';
 import { ArticlesView } from './ArticlesView';
 
@@ -103,6 +104,14 @@ const meta = {
   ],
   args: {
     state: createAppState({ feeds, articles }),
+    actions: {
+      update: fn(async (input) => ({
+        ...articles.find((article) => article.id === input.id)!,
+        readAt: input.read ? publishedAt : null,
+        starred: input.starred ?? false,
+      })),
+      markRead: fn(async () => ({ updated: 0 })),
+    },
     translate: fn(async () => {
       throw new Error('此场景不应调用翻译');
     }),
@@ -604,6 +613,260 @@ export const DesktopSplitReader: Story = {
     await expect(canvas.getByRole('heading', { name: '选择一篇文章' })).toBeVisible();
     await userEvent.type(canvas.getByRole('textbox', { name: '搜索文章' }), 'React');
     await expect(canvas.getByText('3 篇符合条件')).toBeVisible();
+  },
+};
+
+function ReaderState({
+  fail = false,
+  ...props
+}: Parameters<typeof ArticlesView>[0] & { fail?: boolean }) {
+  const [state, setState] = useState(props.state);
+  const [error, setError] = useState('');
+  const actions: import('./ArticlesView').ArticleActions = {
+    async update(input) {
+      if (fail) throw new Error('阅读状态保存失败');
+      const next = state.articles.map((article) =>
+        article.id === input.id
+          ? {
+              ...article,
+              ...(input.read === undefined ? {} : { readAt: input.read ? publishedAt : null }),
+              ...(input.starred === undefined ? {} : { starred: input.starred }),
+            }
+          : article,
+      );
+      setState((current) => ({ ...current, articles: next }));
+      return next.find((article) => article.id === input.id)!;
+    },
+    async markRead(input) {
+      if (fail) throw new Error('阅读状态保存失败');
+      const ids = new Set(
+        filterArticles(state.articles, state.feeds, input.filter).map((article) => article.id),
+      );
+      const changed = state.articles.filter(
+        (article) => ids.has(article.id) && Boolean(article.readAt) !== input.read,
+      ).length;
+      setState((current) => ({
+        ...current,
+        articles: current.articles.map((article) =>
+          ids.has(article.id) ? { ...article, readAt: input.read ? publishedAt : null } : article,
+        ),
+      }));
+      return { updated: changed };
+    },
+  };
+  return (
+    <>
+      {error && <p role="alert">{error}</p>}
+      <ArticlesView
+        {...props}
+        state={state}
+        actions={actions}
+        perform={async (_label, action) => {
+          try {
+            await action();
+            setError('');
+            return true;
+          } catch (failure) {
+            setError(failure instanceof Error ? failure.message : '保存失败');
+            return false;
+          }
+        }}
+      />
+    </>
+  );
+}
+
+export const ReadingAndFavorites: Story = {
+  render: (args) => <ReaderState {...args} />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: `收藏：${articles[0].title}` }));
+    await expect(
+      canvas.getByRole('button', { name: `取消收藏：${articles[0].title}` }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(canvas.getByRole('button', { name: '只看收藏' }));
+    await expect(canvas.getByText('1 篇符合条件')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: articles[0].title }));
+    const reader = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await expect(await reader.findByRole('button', { name: '标为未读' })).toBeVisible();
+    await userEvent.keyboard('m');
+    await expect(await reader.findByRole('button', { name: '标为已读' })).toBeVisible();
+    await userEvent.keyboard('s');
+    await expect(await reader.findByRole('button', { name: '收藏文章' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await userEvent.keyboard('{Escape}');
+    await expect(canvas.getByRole('heading', { name: '没有匹配的文章' })).toBeVisible();
+    await userEvent.click(canvas.getAllByRole('button', { name: '清除筛选' })[0]);
+    await expect(
+      canvas.getByRole('button', { name: `标为已读：${articles[0].title}` }),
+    ).toBeVisible();
+  },
+};
+
+export const ScopedBulkRead: Story = {
+  render: (args) => <ReaderState {...args} />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByRole('textbox', { name: '搜索文章' }), 'ReAcT');
+    await userEvent.selectOptions(
+      canvas.getByRole('combobox', { name: '按分组筛选' }),
+      'category:工程',
+    );
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: '阅读状态' }), 'unread');
+    await expect(canvas.getByText('2 篇符合条件')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: '全部标为已读（2）' }));
+    await expect(canvas.getByText('0 篇符合条件')).toBeVisible();
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: '阅读状态' }), 'read');
+    await expect(canvas.getByText('2 篇符合条件')).toBeVisible();
+    await userEvent.click(canvas.getAllByRole('button', { name: '清除筛选' })[0]);
+    await expect(
+      canvas.getByRole('button', { name: `标为已读：${articles[2].title}` }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: `标为已读：${articles[3].title}` }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: `标为未读：${articles[0].title}` }),
+    ).toBeVisible();
+  },
+};
+
+export const PaginationAndOrder: Story = {
+  args: {
+    state: createAppState({
+      feeds,
+      articles: Array.from({ length: 125 }, (_, index) => ({
+        ...articles[0],
+        id: `page-${index}`,
+        title: `分页文章 ${index + 1}`,
+        publishedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+      })),
+    }),
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: '分页文章 125' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: '分页文章 1' })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await expect(canvas.getByText('第 2 / 3 页 · 51–100 篇')).toBeVisible();
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: '文章排序' }), 'oldest');
+    await expect(canvas.getByText('第 1 / 3 页 · 1–50 篇')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: '分页文章 1' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await userEvent.click(canvas.getByRole('button', { name: '下一页' }));
+    await expect(canvas.getByRole('button', { name: '下一页' })).toBeDisabled();
+    await userEvent.type(canvas.getByRole('textbox', { name: '搜索文章' }), '分页文章 1');
+    await expect(canvas.getByRole('button', { name: '分页文章 1' })).toBeVisible();
+    await expect(
+      canvas.queryByRole('navigation', { name: '文章列表分页' }),
+    ).not.toBeInTheDocument();
+  },
+};
+
+export const SaveFailure: Story = {
+  args: { state: createAppState({ feeds, articles: [{ ...articles[0], readAt: publishedAt }] }) },
+  render: (args) => <ReaderState {...args} fail />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: `收藏：${articles[0].title}` }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('阅读状态保存失败');
+    await expect(
+      canvas.getByRole('button', { name: `收藏：${articles[0].title}` }),
+    ).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+export const KeyboardReading: Story = {
+  render: (args) => <ReaderState {...args} />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('heading', { level: 1 }));
+    await userEvent.keyboard('/');
+    await expect(canvas.getByRole('textbox', { name: '搜索文章' })).toHaveFocus();
+    await userEvent.click(canvas.getByRole('button', { name: articles[0].title }));
+    const reader = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await userEvent.keyboard('j');
+    await expect(reader.getByRole('heading', { name: articles[1].title })).toHaveFocus();
+    await userEvent.keyboard('k');
+    await expect(reader.getByRole('heading', { name: articles[0].title })).toHaveFocus();
+  },
+};
+
+export const RapidReading: Story = {
+  render: function SlowSave(args) {
+    const [state, setState] = useState(args.state);
+    const [busy, setBusy] = useState<string | null>(null);
+    const [gate] = useState(() => {
+      let release!: () => void;
+      const promise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { promise, release, first: true };
+    });
+    return (
+      <>
+        <button type="button" onClick={gate.release}>
+          完成首次状态保存
+        </button>
+        <ArticlesView
+          {...args}
+          state={state}
+          busy={busy}
+          perform={async (label, action) => {
+            setBusy(label);
+            try {
+              await action();
+              return true;
+            } finally {
+              setBusy(null);
+            }
+          }}
+          actions={{
+            update: async (input) => {
+              if (gate.first) {
+                gate.first = false;
+                await gate.promise;
+              }
+              const saved = {
+                ...state.articles.find((article) => article.id === input.id)!,
+                readAt: publishedAt,
+              };
+              setState((current) => ({
+                ...current,
+                articles: current.articles.map((article) =>
+                  article.id === input.id ? { ...article, readAt: publishedAt } : article,
+                ),
+              }));
+              return saved;
+            },
+            markRead: meta.args.actions.markRead,
+          }}
+        />
+      </>
+    );
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    const complete = canvas.getByRole('button', { name: '完成首次状态保存' });
+    await userEvent.click(canvas.getByRole('button', { name: articles[0].title }));
+    const reader = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await waitFor(() => expect(reader.getByRole('button', { name: '标为已读' })).toBeDisabled());
+    await userEvent.click(reader.getByRole('button', { name: '下一篇' }));
+    await userEvent.click(reader.getByRole('button', { name: '下一篇' }));
+    await expect(reader.getByRole('heading', { name: articles[2].title })).toBeVisible();
+    // Release the service boundary while the reader holds modal focus.
+    complete.click();
+    await expect(await reader.findByRole('button', { name: '标为未读' })).toBeEnabled();
+    await userEvent.keyboard('{Escape}');
+    for (const article of articles.slice(0, 3))
+      await expect(
+        canvas.getByRole('button', { name: `标为未读：${article.title}` }),
+      ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: `标为已读：${articles[3].title}` }),
+    ).toBeVisible();
   },
 };
 

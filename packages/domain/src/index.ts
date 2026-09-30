@@ -13,6 +13,7 @@ export const feedSchema = z.object({
   lastFetchedAt: z.string().nullable(),
   error: z.string().nullable(),
   articleCount: z.number().int().nonnegative(),
+  unreadCount: z.number().int().nonnegative().optional(),
 });
 export const articleSchema = z.object({
   id: z.string(),
@@ -23,6 +24,9 @@ export const articleSchema = z.object({
   content: z.string(),
   publishedAt: z.string(),
   dateEstimated: z.boolean(),
+  // Older archived source snapshots have no reading state.
+  readAt: z.iso.datetime().nullable().optional(),
+  starred: z.boolean().optional(),
 });
 export const translationInputSchema = z
   .object({
@@ -260,3 +264,11 @@ export type RefreshResult = z.infer<typeof refreshResultSchema>;
 export type ImportResult = z.infer<typeof importResultSchema>;
 export type ConnectionInput = z.infer<typeof connectionSchema>;
 export type DigestInput = z.infer<typeof digestInputSchema>;
+
+export {
+  articleFilterSchema,
+  articleUpdateSchema,
+  markArticlesReadSchema,
+  feedUpdateSchema,
+} from './reader';
+export type { ArticleFilter, ArticleUpdate, MarkArticlesRead, FeedUpdate } from './reader';

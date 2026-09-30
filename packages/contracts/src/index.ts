@@ -2,6 +2,10 @@ import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
   addFeedSchema,
+  articleSchema,
+  articleUpdateSchema,
+  markArticlesReadSchema,
+  feedUpdateSchema,
   appStateSchema,
   connectionSchema,
   digestGenerationEventSchema,
@@ -49,11 +53,18 @@ export const contract = {
   feeds: {
     icon: procedure.input(idSchema).output(z.string().nullable()),
     add: procedure.input(addFeedSchema).output(feedSchema),
+    update: procedure.input(feedUpdateSchema).output(feedSchema),
     remove: procedure.input(idSchema).output(okSchema),
     refresh: procedure.output(feedRefreshStatusSchema),
     status: procedure.output(feedRefreshStatusSchema.nullable()),
     import: procedure.input(importOpmlSchema).output(importResultSchema),
     export: procedure.output(z.object({ opml: z.string() })),
+  },
+  articles: {
+    update: procedure.input(articleUpdateSchema).output(articleSchema),
+    markRead: procedure
+      .input(markArticlesReadSchema)
+      .output(z.object({ updated: z.number().int().nonnegative() })),
   },
   settings: { save: procedure.input(settingsUpdateSchema).output(settingsSchema) },
   providers: {

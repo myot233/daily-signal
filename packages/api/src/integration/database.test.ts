@@ -204,3 +204,89 @@ test('icon cache migration preserves subscriptions and cached bytes survive an o
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('reader migration preserves old feeds, articles and archived snapshots; flags survive restart', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'daily-signal-reader-'));
+  const databasePath = join(directory, 'state.sqlite');
+  try {
+    const legacyMigrations = join(directory, 'migrations');
+    mkdirSync(join(legacyMigrations, 'meta'), { recursive: true });
+    const journal = JSON.parse(
+      readFileSync(
+        new URL('../../../database/drizzle/meta/_journal.json', import.meta.url),
+        'utf8',
+      ),
+    );
+    journal.entries = journal.entries.slice(0, 7);
+    writeFileSync(join(legacyMigrations, 'meta/_journal.json'), JSON.stringify(journal));
+    for (const entry of journal.entries)
+      writeFileSync(
+        join(legacyMigrations, `${entry.tag}.sql`),
+        readFileSync(new URL(`../../../database/drizzle/${entry.tag}.sql`, import.meta.url)),
+      );
+    const legacy = new Database(databasePath);
+    try {
+      migrate(drizzle(legacy), { migrationsFolder: legacyMigrations });
+      legacy
+        .prepare(
+          "INSERT INTO feeds (id, url, title, created_at) VALUES ('old-feed', 'https://reader.example.com/rss', 'Old feed', '2026-09-29')",
+        )
+        .run();
+      legacy
+        .prepare(
+          "INSERT INTO articles (id, feed_id, title, url, content, published_at) VALUES ('old-article', 'old-feed', 'Saved article', 'https://reader.example.com/one', 'Saved body', '2026-09-29T00:00:00.000Z')",
+        )
+        .run();
+      legacy
+        .prepare(
+          "INSERT INTO digests (id, date, title, markdown, created_at, article_count, model, sources) VALUES ('old-digest', '2026-09-29', 'Saved digest', '# Archived', '2026-09-29', 1, 'fixture', ?)",
+        )
+        .run(
+          JSON.stringify([
+            {
+              id: 'old-article',
+              feedId: 'old-feed',
+              feedTitle: 'Old feed',
+              title: 'Saved article',
+              url: 'https://reader.example.com/one',
+              content: 'Saved body',
+              publishedAt: '2026-09-29T00:00:00.000Z',
+              dateEstimated: false,
+            },
+          ]),
+        );
+    } finally {
+      legacy.close();
+    }
+    const first = run(
+      databasePath,
+      `
+      const { sqlite } = await import('@daily-signal/database');
+      const { listArticles, updateArticle, updateFeed } = await import('@daily-signal/feeds/repository');
+      const before = listArticles()[0];
+      updateArticle({ id: 'old-article', read: true, starred: true });
+      updateFeed({ id: 'old-feed', title: 'My feed', category: 'Saved group' });
+      console.log(JSON.stringify({ before, sources: sqlite.prepare('SELECT sources FROM digests WHERE id=?').get('old-digest').sources })); sqlite.close();
+    `,
+    );
+    assert.equal(first.before.readAt, null);
+    assert.equal(first.before.starred, false);
+    const restarted = run(
+      databasePath,
+      `
+      const { sqlite } = await import('@daily-signal/database');
+      const { getState } = await import('./src/state.ts');
+      console.log(JSON.stringify({ state: getState(), sources: sqlite.prepare('SELECT sources FROM digests WHERE id=?').get('old-digest').sources })); sqlite.close();
+    `,
+    );
+    assert.ok(restarted.state.articles[0].readAt);
+    assert.equal(restarted.state.articles[0].starred, true);
+    assert.equal(restarted.state.feeds[0].title, 'My feed');
+    assert.equal(restarted.state.feeds[0].unreadCount, 0);
+    assert.equal(restarted.state.feeds[0].category, 'Saved group');
+    assert.equal(restarted.sources, first.sources);
+    assert.equal(restarted.state.digests[0].sources[0].feedTitle, 'Old feed');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

@@ -50,12 +50,21 @@ const meta = {
   ],
   args: {
     state: createAppState({ feeds, articles }),
+    articleActions: {
+      update: fn(async (input) => ({
+        ...articles.find((article) => article.id === input.id)!,
+        readAt: input.read ? date : null,
+        starred: input.starred ?? false,
+      })),
+      markRead: fn(async () => ({ updated: 0 })),
+    },
     busy: null,
     navigate: fn(),
     refresh: fn(),
     notify: fn(),
-    perform: fn(async () => {
-      throw new Error('此场景不应提交订阅变更');
+    perform: fn(async (_label, action) => {
+      await action();
+      return true;
     }),
   },
 } satisfies Meta<typeof FeedsView>;
@@ -165,5 +174,48 @@ export const RemovedSelection: Story = {
     await expect(canvas.getByRole('heading', { level: 2, name: '全部文章' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: articles[1].title })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: articles[0].title })).not.toBeInTheDocument();
+  },
+};
+
+export const EditNameAndGroup: Story = {
+  render: function Editing(args) {
+    const [state, setState] = useState(args.state);
+    return (
+      <FeedsView
+        {...args}
+        state={state}
+        saveFeed={async (input) => {
+          const changed = {
+            ...state.feeds.find((feed) => feed.id === input.id)!,
+            title: input.title,
+            category: input.category,
+          };
+          setState((current) => ({
+            ...current,
+            feeds: current.feeds.map((feed) => (feed.id === input.id ? changed : feed)),
+            articles: current.articles.map((article) =>
+              article.feedId === input.id ? { ...article, feedTitle: input.title } : article,
+            ),
+          }));
+          return changed;
+        }}
+      />
+    );
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: '编辑 工程周刊' }));
+    const page = within(canvasElement.ownerDocument.body);
+    const dialog = within(await page.findByRole('dialog', { name: '编辑订阅源' }));
+    await userEvent.clear(dialog.getByRole('textbox', { name: '订阅名称' }));
+    await userEvent.type(dialog.getByRole('textbox', { name: '订阅名称' }), '我的工程阅读');
+    await userEvent.clear(dialog.getByRole('combobox', { name: '分组' }));
+    await userEvent.type(dialog.getByRole('combobox', { name: '分组' }), '技术');
+    await userEvent.click(dialog.getByRole('button', { name: '保存订阅' }));
+    await waitFor(() => expect(page.queryByRole('dialog')).not.toBeInTheDocument());
+    await expect(canvas.getByRole('button', { name: '我的工程阅读' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: '技术' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: '我的工程阅读' }));
+    await expect(canvas.getByRole('heading', { level: 2, name: '我的工程阅读' })).toBeVisible();
   },
 };
