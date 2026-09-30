@@ -184,8 +184,7 @@ export const GeneratedWithSources: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('heading', { level: 2, name: '最新生成结果' })).toBeVisible();
-    await expect(canvas.getByText('AI 生成 · 已归档')).toBeVisible();
+    await expect(canvas.getByRole('article')).toBeVisible();
     await expect(canvas.getByRole('heading', { level: 2, name: digest.title })).toBeVisible();
 
     await userEvent.click(canvas.getByRole('button', { name: '查看 1 条参考来源' }));

@@ -55,8 +55,8 @@ function DialogContent({
         data-variant={variant}
         className={cn(
           variant === 'drawer'
-            ? 'fixed inset-y-0 right-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l bg-background shadow-lg outline-none duration-200 min-[1024px]:w-160 data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right'
-            : 'max-h-[calc(100dvh_-_40px)] overflow-y-auto max-[640px]:p-5.5 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
+            ? 'fixed inset-y-0 right-0 z-50 flex h-dvh w-full flex-col overflow-hidden border-l bg-background outline-none duration-200 min-[1024px]:w-160 data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right'
+            : 'max-h-[calc(100dvh_-_40px)] overflow-y-auto max-[640px]:p-5.5 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
           className,
         )}
         {...props}

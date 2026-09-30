@@ -211,7 +211,7 @@ export const LargeLibraryNavigation: Story = {
     await expect(
       await canvas.findByRole('heading', { level: 1, name: '订阅与文章' }),
     ).toBeVisible();
-    await expect(canvas.getByText('3000 篇符合条件')).toBeVisible();
+    await expect(canvas.getByText('3000 篇')).toBeVisible();
     await expect(within(canvas.getByLabelText('文章列表')).getAllByRole('article')).toHaveLength(
       50,
     );

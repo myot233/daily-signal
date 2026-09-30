@@ -1,13 +1,12 @@
 import { ui } from '@daily-signal/ui/styles';
 import { useAtom } from 'jotai';
-import { Check, FilePenLine, RotateCcw, Save } from 'lucide-react';
+import { RotateCcw, Save } from 'lucide-react';
 import { settingsSchema } from '@daily-signal/domain';
 import type { Settings, SettingsUpdate } from '@daily-signal/domain';
 import type { ViewProps } from '@daily-signal/client';
 import { templateDraftAtom } from '@daily-signal/client/state';
 import { Button } from '@daily-signal/ui/button';
 import { Card } from '@daily-signal/ui/card';
-import { Badge } from '@daily-signal/ui/badge';
 import { Label } from '@daily-signal/ui/label';
 import { Textarea } from '@daily-signal/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@daily-signal/ui/tabs';
@@ -39,10 +38,7 @@ export function TemplateView({
     <>
       <div className={ui.viewHeading}>
         <h1>日报设置</h1>
-        <Badge variant={dirty ? 'outline' : 'secondary'}>
-          {dirty ? <FilePenLine size={12} /> : <Check size={12} />}
-          {dirty ? '有未保存的修改' : '已保存'}
-        </Badge>
+        <span className="text-xs text-muted-foreground">{dirty ? '有未保存的修改' : '已保存'}</span>
       </div>
       <CurationSettings
         state={state}
@@ -63,7 +59,7 @@ export function TemplateView({
               <TabsTrigger value="edit">编辑模板</TabsTrigger>
               <TabsTrigger value="preview">排版预览</TabsTrigger>
             </TabsList>
-            <span className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-[#655747]">
+            <span className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-foreground">
               {template.length.toLocaleString('zh-CN')} / 12,000 字符
             </span>
           </div>
@@ -83,7 +79,7 @@ export function TemplateView({
             </div>
           </TabsContent>
           <TabsContent value="preview">
-            <div className="text-[11px] bg-[#f3efdf] border border-[#e8dfc9] text-[#78643b] py-2.75 px-3.75 rounded-[5px]">
+            <div className="text-[11px] bg-muted border border-border text-muted-foreground py-2.75 px-3.75 rounded-sm">
               模板预览，不是生成结果 · 不会调用模型
             </div>
             <div className="min-h-95 max-w-200 mx-auto py-6 px-3">
@@ -99,7 +95,7 @@ export function TemplateView({
         </Tabs>
         <p
           id="template-help"
-          className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-[#655747]"
+          className="quiet-note text-muted-foreground text-[11px] leading-[1.9] wrap-anywhere [&_strong]:font-medium [&_strong]:text-foreground"
         >
           支持 Markdown。保存后生效；刷新会丢弃未保存修改。
         </p>

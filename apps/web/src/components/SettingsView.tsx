@@ -339,7 +339,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                   key={provider.id}
                   type="button"
                   onClick={() => chooseProvider(provider.id)}
-                  className={`flex min-h-15 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${isSelected ? 'border-[#d9c5ac] bg-[#faf5ec]' : 'border-transparent hover:bg-secondary'}`}
+                  className={`flex min-h-15 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${isSelected ? 'border-input bg-accent' : 'border-transparent hover:bg-secondary'}`}
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-md bg-background">
                     <ProviderIcon presetId={provider.presetId} size={21} />
@@ -535,7 +535,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                         </small>
                       </span>
                     </label>
-                    <details className="rounded-lg border bg-[#fbfaf5] p-4">
+                    <details className="rounded-lg border bg-muted p-4">
                       <summary className="cursor-pointer text-sm font-semibold">高级参数</summary>
                       <div className="mt-5 grid grid-cols-2 gap-5 max-[640px]:grid-cols-1">
                         <div className={fieldClass}>
@@ -717,7 +717,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                     </Button>
                   </div>
                   {dirty && (
-                    <div className="rounded-lg border border-[#e8d8b2] bg-[#f7efdc] px-4 py-3 text-[11px] text-[#826426]">
+                    <div className="rounded-lg border border-border bg-muted px-4 py-3 text-[11px] text-muted-foreground">
                       连接配置有未保存修改。模型测试始终使用已保存版本；请先保存或放弃修改。
                     </div>
                   )}
@@ -820,7 +820,7 @@ export function SettingsView({ state, busy, perform, notify }: ViewProps) {
                         return (
                           <div
                             key={model.id}
-                            className="flex min-h-16 items-center gap-3 rounded-lg border bg-[#fbfaf5] px-4 py-3 max-[640px]:flex-wrap"
+                            className="flex min-h-16 items-center gap-3 rounded-lg border bg-muted px-4 py-3 max-[640px]:flex-wrap"
                           >
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm">
@@ -1054,7 +1054,7 @@ function CheckStatus({ provider }: { provider: ProviderConnection }) {
     <div className="rounded-lg border bg-secondary/30 p-4">
       <div className="mb-3 flex items-center justify-between text-[11px]">
         <strong>最近连接检测</strong>
-        <span className={stale ? 'text-[#9a6b2f]' : 'text-muted-foreground'}>
+        <span className="text-muted-foreground">
           {stale ? '配置已变更 · 结果过期' : new Date(latestAt!).toLocaleString('zh-CN')}
         </span>
       </div>
@@ -1158,7 +1158,7 @@ function AddProviderDialog({
                 key={item.id}
                 type="button"
                 onClick={() => choose(item.id)}
-                className={`grid min-h-14 place-items-center gap-1 rounded-lg border p-2 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${item.id === presetId ? 'border-primary bg-[#faf3e8]' : 'bg-card hover:bg-secondary'}`}
+                className={`grid min-h-14 place-items-center gap-1 rounded-lg border p-2 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${item.id === presetId ? 'border-primary bg-accent' : 'bg-card hover:bg-secondary'}`}
               >
                 <ProviderIcon presetId={item.id} size={24} />
                 <span>{item.name}</span>
